@@ -38,13 +38,33 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
+    if (!res || !res.token || !res.user) {
+      console.error('Invalid response data. Cannot set session.');
+      return;
+    }
+
     localStorage.setItem('token', res.token);
-    localStorage.setItem('user', JSON.stringify(res.user));
+    try {
+      localStorage.setItem('user', JSON.stringify(res.user));
+    } catch (error) {
+      console.error('Error saving user data to localStorage:', error);
+    }
     this.currentUserSubject.next(res.user);
   }
 
-  public getUserFromStorage() {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+  public getUserFromStorage(): any {
+    const userData = localStorage.getItem('user'); // Retrieve data from localStorage
+    if (!userData) {
+      console.warn('No user data found in localStorage');
+      return null; // Return null if no data is found
+    }
+
+    try {
+      return JSON.parse(userData); // Parse the JSON string
+    } catch (error) {
+      console.error('Error parsing user data from localStorage:', error);
+      localStorage.removeItem('user'); // Remove invalid data to prevent repeated errors
+      return null; // Return null if parsing fails
+    }
   }
-} 
+}
