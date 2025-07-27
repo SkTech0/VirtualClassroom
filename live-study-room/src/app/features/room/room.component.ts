@@ -1,11 +1,14 @@
+// room.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { Subject } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,9 +22,9 @@ import { MatListModule } from '@angular/material/list';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { Subject } from 'rxjs';
+import { MatDialogModule } from '@angular/material/dialog';
 import { takeUntil } from 'rxjs/operators';
+import { ChatComponent } from '../chat/chat.component';
 
 interface Room {
   id: string;
@@ -59,7 +62,8 @@ interface Participant {
     MatFormFieldModule,
     MatInputModule,
     MatMenuModule,
-    MatDialogModule
+    MatDialogModule,
+    ChatComponent
   ],
   templateUrl: './room.component.html',
   styleUrls: ['./room.component.css'],
@@ -67,9 +71,7 @@ interface Participant {
 export class RoomComponent implements OnInit, OnDestroy {
   room: Room | null = null;
   participants: Participant[] = [];
-  chatMessages: any[] = [];
-  newMessage = '';
-  pomodoroTime = 1500; // 25 minutes in seconds
+  pomodoroTime = 1500;
   pomodoroActive = false;
   pomodoroMode = 'work';
   leaderboard: any[] = [];
@@ -97,9 +99,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.pomodoroInterval) {
-      clearInterval(this.pomodoroInterval);
-    }
+    clearInterval(this.pomodoroInterval);
     this.signalR.stopConnection();
   }
 
@@ -117,29 +117,24 @@ export class RoomComponent implements OnInit, OnDestroy {
     });
   }
 
-async setupSignalR(code: string) {
-  const token = this.auth.getToken();
+  async setupSignalR(code: string) {
+    const token = this.auth.getToken();
 
-  await this.signalR.startConnection('http://localhost:5275/hubs/room', {
-    accessTokenFactory: () => token || ''
-  });
+    await this.signalR.startConnection('http://localhost:5275/hubs/room', {
+      accessTokenFactory: () => token || ''
+    });
 
-  this.signalR.connectionState$.subscribe(connected => {
-    if (connected) {
-      this.signalR.invoke('JoinRoomGroup', code)
-        .catch(err => console.error('JoinRoomGroup failed:', err));
-    }
-  });
+    this.signalR.connectionState$.subscribe(connected => {
+      if (connected) {
+        this.signalR.invoke('JoinRoomGroup', code).catch(err => console.error('JoinRoomGroup failed:', err));
+      }
+    });
 
-  this.signalR.on('ParticipantsChanged', () => this.loadParticipants());
-  this.signalR.on('ReceiveMessage', (message: any) => {
-    this.chatMessages.push(message);
-  });
-  this.signalR.on('ReminderReceived', (message: string) => {
-    this.snackBar.open(message, 'Close', { duration: 5000 });
-  });
-}
-
+    this.signalR.on('ParticipantsChanged', () => this.loadParticipants());
+    this.signalR.on('ReminderReceived', (message: string) => {
+      this.snackBar.open(message, 'Close', { duration: 5000 });
+    });
+  }
 
   loadParticipants() {
     if (!this.room) return;
@@ -156,34 +151,12 @@ async setupSignalR(code: string) {
   }
 
   loadLeaderboard() {
-    // Mock data for now
     this.leaderboard = [
       { username: 'John Doe', focusMinutes: 120, pomodoros: 4 },
       { username: 'Jane Smith', focusMinutes: 90, pomodoros: 3 },
       { username: 'Bob Johnson', focusMinutes: 60, pomodoros: 2 }
     ];
   }
-
-sendMessage() {
-  if (!this.newMessage.trim() || !this.room) return;
-
-  const username = this.auth.getUserFromStorage()?.username || 'Anonymous';
-
-  this.signalR.connectionState$.subscribe(connected => {
-    if (connected) {
-      this.signalR.invoke('SendMessage', this.room!.code, username, this.newMessage.trim())
-        .catch(err => {
-          console.error('❌ SendMessage failed:', err);
-          this.snackBar.open('Message failed to send', 'Close', { duration: 2000 });
-        });
-      this.newMessage = '';
-    } else {
-      this.snackBar.open('⚠ Not connected to chat yet.', 'Close', { duration: 2000 });
-    }
-  }).unsubscribe();
-}
-
-
 
   startPomodoro() {
     this.pomodoroActive = true;
@@ -199,9 +172,7 @@ sendMessage() {
 
   pausePomodoro() {
     this.pomodoroActive = false;
-    if (this.pomodoroInterval) {
-      clearInterval(this.pomodoroInterval);
-    }
+    clearInterval(this.pomodoroInterval);
   }
 
   resetPomodoro() {
@@ -212,15 +183,9 @@ sendMessage() {
   setPomodoroMode(mode: string) {
     this.pomodoroMode = mode;
     switch (mode) {
-      case 'work':
-        this.pomodoroTime = 1500; // 25 minutes
-        break;
-      case 'break':
-        this.pomodoroTime = 300; // 5 minutes
-        break;
-      case 'longBreak':
-        this.pomodoroTime = 900; // 15 minutes
-        break;
+      case 'work': this.pomodoroTime = 1500; break;
+      case 'break': this.pomodoroTime = 300; break;
+      case 'longBreak': this.pomodoroTime = 900; break;
     }
   }
 
@@ -281,4 +246,4 @@ sendMessage() {
       });
     }
   }
-} 
+}

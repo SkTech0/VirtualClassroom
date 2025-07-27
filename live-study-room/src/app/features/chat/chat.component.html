@@ -1,14 +1,20 @@
-<div class="card shadow-sm" style="max-width: 500px; margin: 2rem auto;">
-      <div class="card-body">
-        <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
-          <div *ngFor="let msg of messages">
-            <strong>{{ msg.user }}:</strong> {{ msg.message }}
-            <span class="text-muted small">({{ msg.timestamp | date:'shortTime' }})</span>
-          </div>
-        </div>
-        <form [formGroup]="form" (ngSubmit)="sendMessage()" class="d-flex gap-2 align-items-end">
-          <input class="form-control" formControlName="message" placeholder="Type a message..." />
-          <app-primary-button [loading]="sending" type="submit">Send</app-primary-button>
-        </form>
+<div class="card shadow-sm" style="max-width: 600px; margin: 2rem auto;">
+  <div class="card-body">
+    <div style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem;">
+      <div *ngFor="let msg of messages">
+        <strong>{{ msg.user }}:</strong> {{ msg.message }}
+        <span class="text-muted small">({{ msg.timestamp | date: 'shortTime' }})</span>
       </div>
     </div>
+
+    <form [formGroup]="form" (ngSubmit)="sendMessage()" class="d-flex gap-2 align-items-end">
+      <input
+        class="form-control"
+        formControlName="message"
+        placeholder="Type a message..."
+        autocomplete="off"
+      />
+      <app-primary-button [loading]="sending" type="submit">Send</app-primary-button>
+    </form>
+  </div>
+</div>

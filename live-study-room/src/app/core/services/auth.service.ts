@@ -4,7 +4,7 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 
 export interface AuthResponse {
   token: string;
-  role: any;
+  username: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,22 +38,22 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
-    if (!res || !res.token || !res.role) {
+    if (!res || !res.token || !res.username) {
       console.error('Invalid response data. Cannot set session.');
       return;
     }
 
     localStorage.setItem('token', res.token);
     try {
-      localStorage.setItem('user', JSON.stringify(res.role));
+      localStorage.setItem('username', JSON.stringify(res.username));
     } catch (error) {
       console.error('Error saving user data to localStorage:', error);
     }
-    this.currentUserSubject.next(res.role);
+    this.currentUserSubject.next(res.username);
   }
 
   public getUserFromStorage(): any {
-    const userData = localStorage.getItem('user'); // Retrieve data from localStorage
+    const userData = localStorage.getItem('username'); // Retrieve data from localStorage
     if (!userData) {
       console.warn('No user data found in localStorage');
       return null; // Return null if no data is found
@@ -63,7 +63,7 @@ export class AuthService {
       return JSON.parse(userData); // Parse the JSON string
     } catch (error) {
       console.error('Error parsing user data from localStorage:', error);
-      localStorage.removeItem('user'); // Remove invalid data to prevent repeated errors
+      localStorage.removeItem('username'); // Remove invalid data to prevent repeated errors
       return null; // Return null if parsing fails
     }
   }

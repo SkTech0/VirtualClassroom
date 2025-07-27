@@ -3,4 +3,4 @@ import { ChatComponent } from './chat.component';
 
 export const chatRoutes: Routes = [
   { path: '', component: ChatComponent }
-]; 
+];

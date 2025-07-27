@@ -81,43 +81,9 @@
           <mat-tab-group class="room-tabs">
             <!-- Chat Tab -->
             <mat-tab label="Chat">
-  <div class="tab-content">
-    <mat-card class="chat-card">
-      <mat-card-content>
-        <div class="chat-messages">
-          <div class="message" *ngFor="let message of chatMessages">
-            <div class="message-header">
-              <strong>{{ message.user }}</strong>
-              <span class="message-time">{{ message.timestamp | date: 'shortTime' }}</span>
-            </div>
-            <div class="message-content">{{ message.message }}</div>
-          </div>
-        </div>
-        <mat-divider></mat-divider>
-        <div class="chat-input">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Type a message...</mat-label>
-            <input
-              matInput
-              [(ngModel)]="newMessage"
-              (keyup.enter)="sendMessage()"
-              placeholder="Press Enter to send"
-            />
-            <mat-icon matSuffix>send</mat-icon>
-          </mat-form-field>
-          <button
-            mat-icon-button
-            color="primary"
-            (click)="sendMessage()"
-            [disabled]="!newMessage.trim()"
-          >
-            <mat-icon>send</mat-icon>
-          </button>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+  <app-chat [roomCode]="room.code"></app-chat>
 </mat-tab>
+
 
 
             <!-- Pomodoro Tab -->
