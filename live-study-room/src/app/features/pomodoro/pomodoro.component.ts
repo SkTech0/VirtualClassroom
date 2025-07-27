@@ -5,18 +5,8 @@ import { DecimalPipe, CommonModule } from '@angular/common';
   selector: 'app-pomodoro',
   standalone: true,
   imports: [CommonModule, DecimalPipe],
-  template: `
-    <div class="card text-center shadow-sm" style="max-width: 350px; margin: 2rem auto;">
-      <div class="card-body">
-        <h3 class="card-title">{{ isBreak ? 'Break' : 'Work' }} Time</h3>
-        <div class="display-4 my-3">{{ minutes }}:{{ seconds | number: '2.0' }}</div>
-        <div class="d-flex justify-content-center gap-2">
-          <button class="btn btn-primary" (click)="toggle()">{{ running ? 'Pause' : 'Start' }}</button>
-          <button class="btn btn-outline-secondary" (click)="reset()">Reset</button>
-        </div>
-      </div>
-    </div>
-  `
+  templateUrl: './pomodoro.component.html',
+  styleUrls: ['./pomodoro.component.css'],
 })
 export class PomodoroComponent {
   workDuration = 25 * 60; // 25 minutes

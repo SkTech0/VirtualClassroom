@@ -6,14 +6,8 @@ import { MatButtonModule } from '@angular/material/button';
   selector: 'app-confirm-modal',
   standalone: true,
   imports: [MatDialogModule, MatButtonModule],
-  template: `
-    <h2 mat-dialog-title>Confirm</h2>
-    <mat-dialog-content>{{ data.message }}</mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="onNo()">No</button>
-      <button mat-raised-button color="primary" (click)="onYes()">Yes</button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './confirm-modal.component.html',
+  styleUrls: ['./confirm-modal.component.css'],
 })
 export class ConfirmModalComponent {
   constructor(

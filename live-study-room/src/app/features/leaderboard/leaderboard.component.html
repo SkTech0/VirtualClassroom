@@ -1,0 +1,194 @@
+<div class="leaderboard-container">
+      <!-- Header -->
+      <div class="leaderboard-header">
+        <h1>Leaderboard</h1>
+        <p>See who's leading the way in focused learning</p>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon">
+              <mat-icon>timer</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ totalFocusMinutes }}</h3>
+              <p>Total Focus Minutes</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon">
+              <mat-icon>local_fire_department</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ totalPomodoros }}</h3>
+              <p>Total Pomodoros</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon">
+              <mat-icon>trending_up</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ averageSessionLength }}m</h3>
+              <p>Avg Session Length</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="stat-card">
+          <mat-card-content>
+            <div class="stat-icon">
+              <mat-icon>whatshot</mat-icon>
+            </div>
+            <div class="stat-info">
+              <h3>{{ maxStreak }}</h3>
+              <p>Max Streak Days</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Leaderboard Tabs -->
+      <mat-tab-group class="leaderboard-tabs">
+        <mat-tab label="Focus Minutes">
+          <div class="tab-content">
+            <div class="leaderboard-list">
+              <div class="leaderboard-item" *ngFor="let entry of leaderboardByMinutes; let i = index" 
+                   [class.current-user]="entry.username === currentUser?.username">
+                <div class="rank-badge" [class.top-3]="i < 3">
+                  <span class="rank-number">{{ i + 1 }}</span>
+                  <mat-icon *ngIf="i === 0" class="crown">emoji_events</mat-icon>
+                  <mat-icon *ngIf="i === 1" class="silver">looks_two</mat-icon>
+                  <mat-icon *ngIf="i === 2" class="bronze">looks_3</mat-icon>
+                </div>
+                
+                <div class="user-info">
+                  <div class="user-avatar">
+                    <mat-icon>account_circle</mat-icon>
+                  </div>
+                  <div class="user-details">
+                    <h4>{{ entry.username }}</h4>
+                    <p>{{ entry.email }}</p>
+                  </div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.totalFocusMinutes }}m</div>
+                  <div class="stat-label">Focus Time</div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.totalPomodoros }}</div>
+                  <div class="stat-label">Pomodoros</div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.streakDays }}</div>
+                  <div class="stat-label">Streak</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Pomodoros">
+          <div class="tab-content">
+            <div class="leaderboard-list">
+              <div class="leaderboard-item" *ngFor="let entry of leaderboardByPomodoros; let i = index"
+                   [class.current-user]="entry.username === currentUser?.username">
+                <div class="rank-badge" [class.top-3]="i < 3">
+                  <span class="rank-number">{{ i + 1 }}</span>
+                  <mat-icon *ngIf="i === 0" class="crown">emoji_events</mat-icon>
+                  <mat-icon *ngIf="i === 1" class="silver">looks_two</mat-icon>
+                  <mat-icon *ngIf="i === 2" class="bronze">looks_3</mat-icon>
+                </div>
+                
+                <div class="user-info">
+                  <div class="user-avatar">
+                    <mat-icon>account_circle</mat-icon>
+                  </div>
+                  <div class="user-details">
+                    <h4>{{ entry.username }}</h4>
+                    <p>{{ entry.email }}</p>
+                  </div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.totalPomodoros }}</div>
+                  <div class="stat-label">Pomodoros</div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.totalFocusMinutes }}m</div>
+                  <div class="stat-label">Focus Time</div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.averageSessionLength }}m</div>
+                  <div class="stat-label">Avg Session</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Streaks">
+          <div class="tab-content">
+            <div class="leaderboard-list">
+              <div class="leaderboard-item" *ngFor="let entry of leaderboardByStreaks; let i = index"
+                   [class.current-user]="entry.username === currentUser?.username">
+                <div class="rank-badge" [class.top-3]="i < 3">
+                  <span class="rank-number">{{ i + 1 }}</span>
+                  <mat-icon *ngIf="i === 0" class="crown">emoji_events</mat-icon>
+                  <mat-icon *ngIf="i === 1" class="silver">looks_two</mat-icon>
+                  <mat-icon *ngIf="i === 2" class="bronze">looks_3</mat-icon>
+                </div>
+                
+                <div class="user-info">
+                  <div class="user-avatar">
+                    <mat-icon>account_circle</mat-icon>
+                  </div>
+                  <div class="user-details">
+                    <h4>{{ entry.username }}</h4>
+                    <p>{{ entry.email }}</p>
+                  </div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.streakDays }}</div>
+                  <div class="stat-label">Streak Days</div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.totalFocusMinutes }}m</div>
+                  <div class="stat-label">Total Focus</div>
+                </div>
+
+                <div class="user-stats">
+                  <div class="stat-value">{{ entry.totalPomodoros }}</div>
+                  <div class="stat-label">Pomodoros</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+
+      <!-- Loading State -->
+      <div class="loading-state" *ngIf="loading">
+        <mat-card class="loading-card">
+          <mat-card-content>
+            <mat-spinner diameter="50"></mat-spinner>
+            <p>Loading leaderboard...</p>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>

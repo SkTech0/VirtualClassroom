@@ -1,0 +1,209 @@
+<div class="room-container" *ngIf="room; else loading">
+      <!-- Room Header -->
+      <div class="room-header">
+        <div class="room-info">
+          <div class="room-title">
+            <h1>{{ room.subject || 'Untitled Room' }}</h1>
+            <mat-chip color="primary" selected class="room-code">
+              <mat-icon>code</mat-icon>
+              {{ room.code }}
+            </mat-chip>
+          </div>
+          <div class="room-meta">
+            <span class="host-info">
+              <mat-icon>person</mat-icon>
+              Host: {{ room.hostUsername }}
+            </span>
+            <span class="participant-count">
+              <mat-icon>group</mat-icon>
+              {{ participants.length }} participants
+            </span>
+          </div>
+        </div>
+        
+        <div class="room-actions">
+          <button mat-icon-button [matMenuTriggerFor]="roomMenu" matTooltip="Room options">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #roomMenu="matMenu">
+            <button mat-menu-item (click)="copyRoomCode()">
+              <mat-icon>content_copy</mat-icon>
+              <span>Copy Room Code</span>
+            </button>
+            <button mat-menu-item (click)="shareRoom()">
+              <mat-icon>share</mat-icon>
+              <span>Share Room</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item color="warn" (click)="leaveRoom()">
+              <mat-icon>exit_to_app</mat-icon>
+              <span>Leave Room</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="room-content">
+        <!-- Left Sidebar - Participants -->
+        <div class="sidebar participants-sidebar">
+          <mat-card class="sidebar-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>group</mat-icon>
+                Participants
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <mat-list>
+                <mat-list-item *ngFor="let participant of participants" class="participant-item">
+                  <div class="participant-avatar">
+                    <mat-icon>account_circle</mat-icon>
+                  </div>
+                  <div class="participant-info">
+                    <div class="participant-name">
+                      {{ participant.name }}
+                      <mat-icon *ngIf="participant.isHost" class="host-icon" matTooltip="Room Host">star</mat-icon>
+                    </div>
+                    <div class="participant-email">{{ participant.email }}</div>
+                  </div>
+                  <mat-chip *ngIf="participant.status" [color]="getStatusColor(participant.status)" selected class="status-chip">
+                    {{ participant.status }}
+                  </mat-chip>
+                </mat-list-item>
+              </mat-list>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <!-- Main Area -->
+        <div class="main-area">
+          <mat-tab-group class="room-tabs">
+            <!-- Chat Tab -->
+            <mat-tab label="Chat">
+              <div class="tab-content">
+                <mat-card class="chat-card">
+                  <mat-card-content>
+                    <div class="chat-messages">
+                      <div class="message" *ngFor="let message of chatMessages">
+                        <div class="message-header">
+                          <strong>{{ message.sender }}</strong>
+                          <span class="message-time">{{ message.timestamp | date:'shortTime' }}</span>
+                        </div>
+                        <div class="message-content">{{ message.content }}</div>
+                      </div>
+                    </div>
+                    <mat-divider></mat-divider>
+                    <div class="chat-input">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Type a message...</mat-label>
+                        <input matInput [(ngModel)]="newMessage" (keyup.enter)="sendMessage()" placeholder="Press Enter to send" />
+                        <mat-icon matSuffix>send</mat-icon>
+                      </mat-form-field>
+                      <button mat-icon-button color="primary" (click)="sendMessage()" [disabled]="!newMessage.trim()">
+                        <mat-icon>send</mat-icon>
+                      </button>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </mat-tab>
+
+            <!-- Pomodoro Tab -->
+            <mat-tab label="Pomodoro">
+              <div class="tab-content">
+                <mat-card class="pomodoro-card">
+                  <mat-card-content>
+                    <div class="pomodoro-timer">
+                      <div class="timer-display">
+                        <span class="timer">{{ formatTime(pomodoroTime) }}</span>
+                        <div class="timer-controls">
+                          <button mat-fab color="primary" (click)="startPomodoro()" *ngIf="!pomodoroActive">
+                            <mat-icon>play_arrow</mat-icon>
+                          </button>
+                          <button mat-fab color="warn" (click)="pausePomodoro()" *ngIf="pomodoroActive">
+                            <mat-icon>pause</mat-icon>
+                          </button>
+                          <button mat-fab color="accent" (click)="resetPomodoro()">
+                            <mat-icon>refresh</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="pomodoro-mode">
+                        <div class="mode-chips">
+                          <mat-chip [color]="pomodoroMode === 'work' ? 'primary' : 'default'" (click)="setPomodoroMode('work')">Work (25m)</mat-chip>
+                          <mat-chip [color]="pomodoroMode === 'break' ? 'primary' : 'default'" (click)="setPomodoroMode('break')">Break (5m)</mat-chip>
+                          <mat-chip [color]="pomodoroMode === 'longBreak' ? 'primary' : 'default'" (click)="setPomodoroMode('longBreak')">Long Break (15m)</mat-chip>
+                        </div>
+                      </div>
+                    </div>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </mat-tab>
+
+            <!-- Leaderboard Tab -->
+            <mat-tab label="Leaderboard">
+              <div class="tab-content">
+                <mat-card class="leaderboard-card">
+                  <mat-card-content>
+                    <mat-list>
+                      <mat-list-item *ngFor="let entry of leaderboard; let i = index" class="leaderboard-item">
+                        <div class="rank">{{ i + 1 }}</div>
+                        <div class="user-avatar">
+                          <mat-icon>account_circle</mat-icon>
+                        </div>
+                        <div class="user-info">
+                          <div class="user-name">{{ entry.username }}</div>
+                          <div class="user-stats">{{ entry.focusMinutes }} minutes focused</div>
+                        </div>
+                        <div class="score">{{ entry.pomodoros }} pomodoros</div>
+                      </mat-list-item>
+                    </mat-list>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        </div>
+
+        <!-- Right Sidebar - Quick Actions -->
+        <div class="sidebar actions-sidebar">
+          <mat-card class="sidebar-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>flash_on</mat-icon>
+                Quick Actions
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="quick-actions">
+                <button mat-raised-button color="primary" class="action-btn" (click)="startPomodoro()">
+                  <mat-icon>timer</mat-icon>
+                  Start Pomodoro
+                </button>
+                <button mat-raised-button color="accent" class="action-btn" (click)="sendReminder()">
+                  <mat-icon>notifications</mat-icon>
+                  Send Reminder
+                </button>
+                <button mat-raised-button color="warn" class="action-btn" (click)="knockKnock()">
+                  <mat-icon>knock</mat-icon>
+                  Knock Knock
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #loading>
+      <div class="loading-container">
+        <mat-card class="loading-card">
+          <mat-card-content>
+            <mat-spinner diameter="50"></mat-spinner>
+            <p>Loading room...</p>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </ng-template>
