@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VirtualClassroom.Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d1189b3283f0b45b46bfc2b8e5ea54d02ec9894b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b5c48b9fe8e4d474b807ce4a6b913fd4ee520d73")]
 [assembly: System.Reflection.AssemblyProductAttribute("VirtualClassroom.Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VirtualClassroom.Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
