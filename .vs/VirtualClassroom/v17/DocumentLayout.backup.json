@@ -1,0 +1,86 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|c:\\users\\navee\\onedrive\\documents\\github\\virtualclassroom\\virtualclassroom.backend\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|solutionrelative:virtualclassroom.backend\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|c:\\users\\navee\\onedrive\\documents\\github\\virtualclassroom\\virtualclassroom.backend\\virtualclassroom.backend.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|solutionrelative:virtualclassroom.backend\\virtualclassroom.backend.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|c:\\users\\navee\\onedrive\\documents\\github\\virtualclassroom\\virtualclassroom.backend\\virtualclassroom.backend.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|solutionrelative:virtualclassroom.backend\\virtualclassroom.backend.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|c:\\users\\navee\\onedrive\\documents\\github\\virtualclassroom\\virtualclassroom.backend\\global.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}|VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj|solutionrelative:virtualclassroom.backend\\global.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\appsettings.json",
+              "RelativeDocumentMoniker": "VirtualClassroom.Backend\\appsettings.json",
+              "ToolTip": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\appsettings.json",
+              "RelativeToolTip": "VirtualClassroom.Backend\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAABwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-07-27T04:50:14.109Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "VirtualClassroom.Backend",
+              "DocumentMoniker": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "RelativeDocumentMoniker": "VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "ToolTip": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "RelativeToolTip": "VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-07-27T04:36:14.146Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "global.json",
+              "DocumentMoniker": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\global.json",
+              "RelativeDocumentMoniker": "VirtualClassroom.Backend\\global.json",
+              "ToolTip": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\global.json",
+              "RelativeToolTip": "VirtualClassroom.Backend\\global.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-07-27T04:28:31.883Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "VirtualClassroom.Backend.csproj",
+              "DocumentMoniker": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "RelativeDocumentMoniker": "VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "ToolTip": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "RelativeToolTip": "VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-07-27T04:25:25.264Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,30 +1,36 @@
 {
   "format": 1,
   "restore": {
-    "/Users/satyamkumar/Downloads/virtualApp/VirtualClassroom.Backend/VirtualClassroom.Backend.csproj": {}
+    "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj": {}
   },
   "projects": {
-    "/Users/satyamkumar/Downloads/virtualApp/VirtualClassroom.Backend/VirtualClassroom.Backend.csproj": {
+    "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/satyamkumar/Downloads/virtualApp/VirtualClassroom.Backend/VirtualClassroom.Backend.csproj",
+        "projectUniqueName": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
         "projectName": "VirtualClassroom.Backend",
-        "projectPath": "/Users/satyamkumar/Downloads/virtualApp/VirtualClassroom.Backend/VirtualClassroom.Backend.csproj",
-        "packagesPath": "/Users/satyamkumar/.nuget/packages/",
-        "outputPath": "/Users/satyamkumar/Downloads/virtualApp/VirtualClassroom.Backend/obj/",
+        "projectPath": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\VirtualClassroom.Backend.csproj",
+        "packagesPath": "C:\\Users\\navee\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\navee\\OneDrive\\Documents\\GitHub\\VirtualClassroom\\VirtualClassroom.Backend\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/Users/satyamkumar/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\navee\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net9.0"
+          "net8.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net9.0": {
-            "targetAlias": "net9.0",
+          "net8.0": {
+            "targetAlias": "net8.0",
             "projectReferences": {}
           }
         },
@@ -37,24 +43,23 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.200"
+        }
       },
       "frameworks": {
-        "net9.0": {
-          "targetAlias": "net9.0",
+        "net8.0": {
+          "targetAlias": "net8.0",
           "dependencies": {
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
-              "version": "[9.0.7, )"
+              "version": "[8.0.5, )"
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[9.0.7, )"
+              "version": "[8.0.5, )"
             },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
-              "version": "[9.0.4, )"
+              "version": "[8.0.4, )"
             },
             "Microsoft.AspNetCore.SignalR": {
               "target": "Package",
@@ -62,21 +67,21 @@
             },
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[9.0.7, )"
+              "version": "[8.0.5, )"
             },
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
               "target": "Package",
-              "version": "[9.0.7, )"
+              "version": "[8.0.5, )"
             },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
-              "version": "[9.0.4, )"
+              "version": "[8.0.3, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
-              "version": "[9.0.3, )"
+              "version": "[6.5.0, )"
             }
           },
           "imports": [
@@ -98,7 +103,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.203/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.410/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
