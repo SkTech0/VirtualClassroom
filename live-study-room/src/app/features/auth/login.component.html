@@ -1,0 +1,50 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="logo">
+        <mat-icon>school</mat-icon>
+        <h1>Virtual Classroom</h1>
+      </div>
+      <p>Welcome back! Sign in to continue your learning journey.</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" type="email" placeholder="Enter your email" aria-label="Email" />
+        <mat-icon matSuffix>email</mat-icon>
+        <mat-error *ngIf="form.get('email')?.hasError('required')">Email is required</mat-error>
+        <mat-error *ngIf="form.get('email')?.hasError('email')">Please enter a valid email</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput formControlName="password" type="password" placeholder="Enter your password" aria-label="Password" />
+        <mat-icon matSuffix>lock</mat-icon>
+        <mat-error *ngIf="form.get('password')?.hasError('required')">Password is required</mat-error>
+        <mat-error *ngIf="form.get('password')?.hasError('minlength')">Password must be at least 6 characters</mat-error>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || loading" class="submit-btn" aria-label="Sign In">
+        <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+        <span *ngIf="!loading">Sign In</span>
+      </button>
+
+      <div class="error-message" *ngIf="error">
+        <mat-icon>error</mat-icon>
+        {{ error }}
+      </div>
+      <div style="margin-top:1rem; color:#888; font-size:0.85rem;">
+        <div>Form valid: {{ form.valid }}</div>
+        <div>Loading: {{ loading }}</div>
+      </div>
+    </form>
+
+    <mat-divider></mat-divider>
+
+    <div class="auth-footer">
+      <p style="margin-bottom: 0.5rem;">Don't have an account? <a routerLink="/auth/register" class="link" tabindex="0" role="button">Sign up</a></p>
+      <p><a routerLink="/landing" class="link" tabindex="0" role="button">← Back to Home</a></p>
+    </div>
+  </div>
+</div> 

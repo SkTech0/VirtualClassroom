@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="../buildMultiTargeting/VirtualClassroom.Backend.props" />
+</Project>
