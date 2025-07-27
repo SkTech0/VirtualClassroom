@@ -4,7 +4,7 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 
 export interface AuthResponse {
   token: string;
-  user: any;
+  role: any;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,18 +38,18 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
-    if (!res || !res.token || !res.user) {
+    if (!res || !res.token || !res.role) {
       console.error('Invalid response data. Cannot set session.');
       return;
     }
 
     localStorage.setItem('token', res.token);
     try {
-      localStorage.setItem('user', JSON.stringify(res.user));
+      localStorage.setItem('user', JSON.stringify(res.role));
     } catch (error) {
       console.error('Error saving user data to localStorage:', error);
     }
-    this.currentUserSubject.next(res.user);
+    this.currentUserSubject.next(res.role);
   }
 
   public getUserFromStorage(): any {
