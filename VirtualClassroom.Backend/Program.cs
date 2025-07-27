@@ -65,7 +65,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-builder.Services.AddControllers();  
+builder.Services.AddControllers();
 // Custom services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -88,24 +88,23 @@ builder.Services.AddSwaggerGen(options =>
     // JWT Auth in Swagger
     var jwtSecurityScheme = new OpenApiSecurityScheme
     {
-        BearerFormat = "JWT",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        Description = "Enter your JWT token in the format: Bearer {your token}",
+        Type = SecuritySchemeType.ApiKey, // <<< disables auto-prepend
+        Description = "Enter your JWT token **including** the 'Bearer' prefix (e.g., Bearer eyJ...)",
         Reference = new OpenApiReference
         {
-            Id = JwtBearerDefaults.AuthenticationScheme,
+            Id = "Authorization",
             Type = ReferenceType.SecurityScheme
         }
     };
 
     options.AddSecurityDefinition(jwtSecurityScheme.Reference.Id, jwtSecurityScheme);
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        { jwtSecurityScheme, Array.Empty<string>() }
-    });
+{
+    { jwtSecurityScheme, Array.Empty<string>() }
+});
+
 });
 
 var app = builder.Build();
