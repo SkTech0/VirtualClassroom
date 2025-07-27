@@ -7,13 +7,8 @@ import { CommonModule } from '@angular/common';
   selector: 'app-primary-button',
   standalone: true,
   imports: [MatButtonModule, MatProgressSpinnerModule, CommonModule],
-  template: `
-    <button mat-raised-button color="primary" [disabled]="loading || disabled">
-      <mat-progress-spinner *ngIf="loading" diameter="20" mode="indeterminate"></mat-progress-spinner>
-      <ng-content *ngIf="!loading"></ng-content>
-    </button>
-  `,
-  styles: [':host { display: inline-block; }']
+  templateUrl: './primary-button.component.html',
+  styleUrls: ['./primary-button.component.css'],
 })
 export class PrimaryButtonComponent {
   @Input() loading = false;
