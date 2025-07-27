@@ -117,24 +117,29 @@ export class RoomComponent implements OnInit, OnDestroy {
     });
   }
 
-  setupSignalR(code: string) {
-    const token = this.auth.getToken();
-    if (token) {
-      this.signalR.startConnection('http://localhost:5275/hubs/room', { accessTokenFactory: () => token });
-    } else {
-      this.signalR.startConnection('http://localhost:5275/hubs/room');
+async setupSignalR(code: string) {
+  const token = this.auth.getToken();
+
+  await this.signalR.startConnection('http://localhost:5275/hubs/room', {
+    accessTokenFactory: () => token || ''
+  });
+
+  this.signalR.connectionState$.subscribe(connected => {
+    if (connected) {
+      this.signalR.invoke('JoinRoomGroup', code)
+        .catch(err => console.error('JoinRoomGroup failed:', err));
     }
-    
-    this.signalR.invoke('JoinRoomGroup', code);
-    
-    this.signalR.on('ParticipantsChanged', () => this.loadParticipants());
-    this.signalR.on('MessageReceived', (message: any) => {
-      this.chatMessages.push(message);
-    });
-    this.signalR.on('ReminderReceived', (message: string) => {
-      this.snackBar.open(message, 'Close', { duration: 5000 });
-    });
-  }
+  });
+
+  this.signalR.on('ParticipantsChanged', () => this.loadParticipants());
+  this.signalR.on('ReceiveMessage', (message: any) => {
+    this.chatMessages.push(message);
+  });
+  this.signalR.on('ReminderReceived', (message: string) => {
+    this.snackBar.open(message, 'Close', { duration: 5000 });
+  });
+}
+
 
   loadParticipants() {
     if (!this.room) return;
@@ -159,19 +164,26 @@ export class RoomComponent implements OnInit, OnDestroy {
     ];
   }
 
-  sendMessage() {
-    if (!this.newMessage.trim() || !this.room) return;
-    
-    const message = {
-      content: this.newMessage,
-      sender: this.auth.getUserFromStorage()?.username || 'Anonymous',
-      timestamp: new Date()
-    };
-    
-    this.chatMessages.push(message);
-    this.signalR.invoke('SendMessage', this.room.code, message);
-    this.newMessage = '';
-  }
+sendMessage() {
+  if (!this.newMessage.trim() || !this.room) return;
+
+  const username = this.auth.getUserFromStorage()?.username || 'Anonymous';
+
+  this.signalR.connectionState$.subscribe(connected => {
+    if (connected) {
+      this.signalR.invoke('SendMessage', this.room!.code, username, this.newMessage.trim())
+        .catch(err => {
+          console.error('❌ SendMessage failed:', err);
+          this.snackBar.open('Message failed to send', 'Close', { duration: 2000 });
+        });
+      this.newMessage = '';
+    } else {
+      this.snackBar.open('⚠ Not connected to chat yet.', 'Close', { duration: 2000 });
+    }
+  }).unsubscribe();
+}
+
+
 
   startPomodoro() {
     this.pomodoroActive = true;

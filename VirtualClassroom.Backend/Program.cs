@@ -51,7 +51,28 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
     };
+
+    // ? This is the missing piece for SignalR auth via query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Check if the request is for the SignalR hub
+            var accessToken = context.Request.Query["access_token"];
+
+            // If the request is for our hub endpoint
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/hubs/room"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
+
 
 builder.Services.AddAuthorization();
 // CORS
