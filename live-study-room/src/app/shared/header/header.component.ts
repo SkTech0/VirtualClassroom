@@ -7,7 +7,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/services/auth.service';
-import { User } from '../models/user.model';
 
 @Component({
   selector: 'app-header',
