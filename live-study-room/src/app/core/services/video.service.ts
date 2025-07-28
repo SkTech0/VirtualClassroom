@@ -77,7 +77,7 @@ export class VideoService {
         video: true,
         audio: true
       });
-
+      console.log('getUserMedia succeeded for this participant.');
       // Add local stream to participants
       const localPeer: VideoPeer = {
         id: 'local',
@@ -85,50 +85,49 @@ export class VideoService {
         isLocal: true,
         username: 'You'
       };
-
       this.videoPeers.set('local', localPeer);
       this.updateCallState();
-
       // Join video call in SignalR
       await this.signalR.invoke('JoinVideoCall', roomCode);
-      
       return true;
     } catch (error) {
-      console.error('Failed to initialize video:', error);
+      console.error('Failed to initialize video (getUserMedia):', error);
       return false;
     }
   }
 
   private async addPeer(userId: string, username: string) {
     if (this.peers.has(userId)) return;
-
-    const Peer = (await import('simple-peer')).default;
-    const peer = new Peer({
-      initiator: false,
-      trickle: false,
-      stream: this.localStream ?? undefined
-    });
-
-    peer.on('signal', (data: any) => {
-      this.signalR.invoke('SendVideoAnswer', userId, data);
-    });
-
-    peer.on('stream', (stream: MediaStream) => {
-      const videoPeer: VideoPeer = {
-        id: userId,
-        stream: stream,
-        isLocal: false,
-        username: username
-      };
-      this.videoPeers.set(userId, videoPeer);
-      this.updateCallState();
-    });
-
-    peer.on('icecandidate', (candidate: any) => {
-      this.signalR.invoke('SendVideoIceCandidate', userId, candidate);
-    });
-
-    this.peers.set(userId, peer);
+    try {
+      const Peer = (await import('simple-peer')).default;
+      const peer = new Peer({
+        initiator: false,
+        trickle: false,
+        stream: this.localStream ?? undefined
+      });
+      peer.on('signal', (data: any) => {
+        this.signalR.invoke('SendVideoAnswer', userId, data);
+      });
+      peer.on('stream', (stream: MediaStream) => {
+        const videoPeer: VideoPeer = {
+          id: userId,
+          stream: stream,
+          isLocal: false,
+          username: username
+        };
+        this.videoPeers.set(userId, videoPeer);
+        this.updateCallState();
+      });
+      peer.on('icecandidate', (candidate: any) => {
+        this.signalR.invoke('SendVideoIceCandidate', userId, candidate);
+      });
+      peer.on('error', (err: any) => {
+        console.error('Peer connection error (addPeer):', err);
+      });
+      this.peers.set(userId, peer);
+    } catch (err) {
+      console.error('Error creating peer connection (addPeer):', err);
+    }
   }
 
   private removePeer(userId: string) {
@@ -143,47 +142,58 @@ export class VideoService {
   }
 
   private async handleVideoOffer(from: string, offer: any) {
-    const Peer = (await import('simple-peer')).default;
-    const peer = new Peer({
-      initiator: false,
-      trickle: false,
-      stream: this.localStream ?? undefined
-    });
-
-    peer.on('signal', (data: any) => {
-      this.signalR.invoke('SendVideoAnswer', from, data);
-    });
-
-    peer.on('stream', (stream: MediaStream) => {
-      const videoPeer: VideoPeer = {
-        id: from,
-        stream: stream,
-        isLocal: false,
-        username: 'Participant'
-      };
-      this.videoPeers.set(from, videoPeer);
-      this.updateCallState();
-    });
-
-    peer.on('icecandidate', (candidate: any) => {
-      this.signalR.invoke('SendVideoIceCandidate', from, candidate);
-    });
-
-    peer.signal(offer);
-    this.peers.set(from, peer);
+    try {
+      const Peer = (await import('simple-peer')).default;
+      const peer = new Peer({
+        initiator: false,
+        trickle: false,
+        stream: this.localStream ?? undefined
+      });
+      peer.on('signal', (data: any) => {
+        this.signalR.invoke('SendVideoAnswer', from, data);
+      });
+      peer.on('stream', (stream: MediaStream) => {
+        const videoPeer: VideoPeer = {
+          id: from,
+          stream: stream,
+          isLocal: false,
+          username: 'Participant'
+        };
+        this.videoPeers.set(from, videoPeer);
+        this.updateCallState();
+      });
+      peer.on('icecandidate', (candidate: any) => {
+        this.signalR.invoke('SendVideoIceCandidate', from, candidate);
+      });
+      peer.on('error', (err: any) => {
+        console.error('Peer connection error (handleVideoOffer):', err);
+      });
+      peer.signal(offer);
+      this.peers.set(from, peer);
+    } catch (err) {
+      console.error('Error handling video offer:', err);
+    }
   }
 
   private handleVideoAnswer(from: string, answer: any) {
-    const peer = this.peers.get(from);
-    if (peer) {
-      peer.signal(answer);
+    try {
+      const peer = this.peers.get(from);
+      if (peer) {
+        peer.signal(answer);
+      }
+    } catch (err) {
+      console.error('Error handling video answer:', err);
     }
   }
 
   private handleIceCandidate(from: string, candidate: any) {
-    const peer = this.peers.get(from);
-    if (peer) {
-      peer.signal(candidate);
+    try {
+      const peer = this.peers.get(from);
+      if (peer) {
+        peer.signal(candidate);
+      }
+    } catch (err) {
+      console.error('Error handling ICE candidate:', err);
     }
   }
 

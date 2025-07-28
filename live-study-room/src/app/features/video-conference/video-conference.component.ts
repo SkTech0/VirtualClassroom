@@ -46,20 +46,17 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     this.callState$ = this.videoService.callState$;
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     this.roomCode = this.route.snapshot.paramMap.get('code') || '';
-    
     this.callState$.pipe(takeUntil(this.destroy$)).subscribe(state => {
       this.participants = state.participants;
       this.isVideoEnabled = state.isVideoEnabled;
       this.isAudioEnabled = state.isAudioEnabled;
       this.isScreenSharing = state.isScreenSharing;
       this.isInCall = state.isInCall;
-      
       this.updateVideoElements();
     });
-
-    this.initializeVideo();
+    await this.initializeVideo();
   }
 
   ngAfterViewInit() {
@@ -73,9 +70,17 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   private async initializeVideo() {
-    const success = await this.videoService.initializeVideo(this.roomCode);
-    if (!success) {
-      this.snackBar.open('Failed to access camera/microphone. Please check permissions.', 'Close', { duration: 5000 });
+    try {
+      const success = await this.videoService.initializeVideo(this.roomCode);
+      if (!success) {
+        this.snackBar.open('Failed to access camera/microphone. Please check permissions and reload.', 'Close', { duration: 7000 });
+        console.error('getUserMedia failed for this participant.');
+      } else {
+        console.log('getUserMedia succeeded for this participant.');
+      }
+    } catch (err) {
+      this.snackBar.open('Unexpected error initializing video: ' + (err?.message || err), 'Close', { duration: 7000 });
+      console.error('Unexpected error in initializeVideo:', err);
     }
   }
 
@@ -117,25 +122,42 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     }
     
     videoElement.srcObject = participant.stream;
-    videoElement.play().catch(err => console.error('Failed to play remote video:', err));
+    videoElement.play().catch(err => {
+      console.error('Failed to play remote video for participant', participant.id, err);
+    });
   }
 
   toggleVideo() {
-    const newState = this.videoService.toggleVideo();
-    const message = newState ? 'Video enabled' : 'Video disabled';
-    this.snackBar.open(message, 'Close', { duration: 2000 });
+    try {
+      const newState = this.videoService.toggleVideo();
+      const message = newState ? 'Video enabled' : 'Video disabled';
+      this.snackBar.open(message, 'Close', { duration: 2000 });
+    } catch (err) {
+      this.snackBar.open('Error toggling video: ' + (err?.message || err), 'Close', { duration: 4000 });
+      console.error('Error toggling video:', err);
+    }
   }
 
   toggleAudio() {
-    const newState = this.videoService.toggleAudio();
-    const message = newState ? 'Audio enabled' : 'Audio disabled';
-    this.snackBar.open(message, 'Close', { duration: 2000 });
+    try {
+      const newState = this.videoService.toggleAudio();
+      const message = newState ? 'Audio enabled' : 'Audio disabled';
+      this.snackBar.open(message, 'Close', { duration: 2000 });
+    } catch (err) {
+      this.snackBar.open('Error toggling audio: ' + (err?.message || err), 'Close', { duration: 4000 });
+      console.error('Error toggling audio:', err);
+    }
   }
 
   async toggleScreenShare() {
-    const newState = await this.videoService.toggleScreenShare();
-    const message = newState ? 'Screen sharing started' : 'Screen sharing stopped';
-    this.snackBar.open(message, 'Close', { duration: 2000 });
+    try {
+      const newState = await this.videoService.toggleScreenShare();
+      const message = newState ? 'Screen sharing started' : 'Screen sharing stopped';
+      this.snackBar.open(message, 'Close', { duration: 2000 });
+    } catch (err) {
+      this.snackBar.open('Error toggling screen share: ' + (err?.message || err), 'Close', { duration: 4000 });
+      console.error('Error toggling screen share:', err);
+    }
   }
 
   leaveCall() {

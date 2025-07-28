@@ -1,95 +1,68 @@
-<div class="video-conference-container">
+<div class="container-fluid py-3 video-conference-container">
   <!-- Header -->
-  <div class="video-header">
-    <div class="room-info">
-      <h2>Video Conference</h2>
-      <p>Room: {{ roomCode }} | Participants: {{ getParticipantCount() }}</p>
+  <mat-toolbar color="primary" class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-column">
+      <span class="h5 mb-0">Video Conference</span>
+      <small>Room: {{ roomCode }} | Participants: {{ getParticipantCount() }}</small>
     </div>
-    <div class="header-actions">
+    <div>
       <button mat-icon-button matTooltip="Copy Room Code" (click)="copyRoomCode()">
         <mat-icon>content_copy</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Leave Call" (click)="leaveCall()" class="leave-btn">
+      <button mat-icon-button matTooltip="Leave Call" (click)="leaveCall()" color="warn">
         <mat-icon>call_end</mat-icon>
       </button>
     </div>
-  </div>
+  </mat-toolbar>
 
   <!-- Video Grid -->
-  <div class="video-grid">
+  <div class="row g-3 justify-content-center video-grid">
     <!-- Local Video -->
-    <div class="video-item local-video">
-      <video #localVideo autoplay playsinline muted></video>
-      <div class="video-overlay">
-        <div class="participant-name">You</div>
-        <div class="video-status">
-          <mat-icon *ngIf="!isVideoEnabled" class="status-icon">videocam_off</mat-icon>
-          <mat-icon *ngIf="!isAudioEnabled" class="status-icon">mic_off</mat-icon>
-          <mat-icon *ngIf="isScreenSharing" class="status-icon">screen_share</mat-icon>
+    <div class="col-12 col-md-6 col-lg-4 position-relative mb-3">
+      <mat-card class="h-100 p-0 position-relative">
+        <video #localVideo autoplay playsinline muted class="w-100 h-100 local-video"></video>
+        <div class="video-overlay d-flex justify-content-between align-items-center w-100">
+          <span class="participant-name">You</span>
+          <span class="video-status">
+            <mat-icon *ngIf="!isVideoEnabled" class="status-icon">videocam_off</mat-icon>
+            <mat-icon *ngIf="!isAudioEnabled" class="status-icon">mic_off</mat-icon>
+            <mat-icon *ngIf="isScreenSharing" class="status-icon">screen_share</mat-icon>
+          </span>
         </div>
-      </div>
+      </mat-card>
     </div>
 
     <!-- Remote Videos Container -->
-    <div #remoteVideosContainer class="remote-videos-container">
-      <!-- Remote videos will be dynamically added here -->
-    </div>
+    <ng-container #remoteVideosContainer></ng-container>
 
     <!-- Placeholder for more participants -->
-    <div *ngFor="let i of [1,2,3,4,5,6]" class="video-placeholder" 
-         [class.hidden]="getRemoteParticipants().length >= i">
-      <mat-icon>person_add</mat-icon>
+    <div *ngFor="let i of [1,2,3,4,5,6]" class="col-12 col-md-6 col-lg-4 mb-3 video-placeholder d-flex flex-column align-items-center justify-content-center border border-secondary rounded p-4 bg-light text-muted" [class.hidden]="getRemoteParticipants().length >= i">
+      <mat-icon class="mb-2">person_add</mat-icon>
       <span>Waiting for participant...</span>
     </div>
   </div>
 
   <!-- Video Controls -->
-  <div class="video-controls">
-    <div class="control-group">
-      <button mat-fab 
-              [class.active]="isAudioEnabled"
-              [class.inactive]="!isAudioEnabled"
-              (click)="toggleAudio()"
-              matTooltip="{{ isAudioEnabled ? 'Mute Audio' : 'Unmute Audio' }}">
-        <mat-icon>{{ isAudioEnabled ? 'mic' : 'mic_off' }}</mat-icon>
-      </button>
-    </div>
-
-    <div class="control-group">
-      <button mat-fab 
-              [class.active]="isVideoEnabled"
-              [class.inactive]="!isVideoEnabled"
-              (click)="toggleVideo()"
-              matTooltip="{{ isVideoEnabled ? 'Turn Off Video' : 'Turn On Video' }}">
-        <mat-icon>{{ isVideoEnabled ? 'videocam' : 'videocam_off' }}</mat-icon>
-      </button>
-    </div>
-
-    <div class="control-group">
-      <button mat-fab 
-              [class.active]="isScreenSharing"
-              [class.inactive]="!isScreenSharing"
-              (click)="toggleScreenShare()"
-              matTooltip="{{ isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share' }}">
-        <mat-icon>{{ isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
-      </button>
-    </div>
-
-    <div class="control-group">
-      <button mat-fab 
-              class="leave-call-btn"
-              (click)="leaveCall()"
-              matTooltip="Leave Call">
-        <mat-icon>call_end</mat-icon>
-      </button>
-    </div>
+  <div class="d-flex justify-content-center align-items-center gap-3 py-3 video-controls">
+    <button mat-fab color="primary" [ngClass]="{'bg-success': isAudioEnabled, 'bg-danger': !isAudioEnabled}" (click)="toggleAudio()" matTooltip="{{ isAudioEnabled ? 'Mute Audio' : 'Unmute Audio' }}">
+      <mat-icon>{{ isAudioEnabled ? 'mic' : 'mic_off' }}</mat-icon>
+    </button>
+    <button mat-fab color="primary" [ngClass]="{'bg-success': isVideoEnabled, 'bg-danger': !isVideoEnabled}" (click)="toggleVideo()" matTooltip="{{ isVideoEnabled ? 'Turn Off Video' : 'Turn On Video' }}">
+      <mat-icon>{{ isVideoEnabled ? 'videocam' : 'videocam_off' }}</mat-icon>
+    </button>
+    <button mat-fab color="primary" [ngClass]="{'bg-success': isScreenSharing, 'bg-secondary': !isScreenSharing}" (click)="toggleScreenShare()" matTooltip="{{ isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share' }}">
+      <mat-icon>{{ isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
+    </button>
+    <button mat-fab color="warn" (click)="leaveCall()" matTooltip="Leave Call">
+      <mat-icon>call_end</mat-icon>
+    </button>
   </div>
 
   <!-- Connection Status -->
   <div class="connection-status" *ngIf="!isInCall">
     <mat-card>
       <mat-card-content>
-        <div class="status-content">
+        <div class="d-flex align-items-center gap-2 p-2">
           <mat-icon class="status-icon">wifi</mat-icon>
           <span>Connecting to video call...</span>
         </div>
