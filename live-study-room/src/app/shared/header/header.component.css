@@ -1,0 +1,53 @@
+mat-toolbar {
+  min-height: 64px;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 1000;
+}
+
+.user-avatar.modern-avatar {
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  transition: box-shadow 0.2s;
+}
+.user-avatar.modern-avatar:focus,
+.user-avatar.modern-avatar:hover {
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+  background: rgba(255,255,255,0.08);
+}
+
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.2rem;
+  box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+  transition: background 0.2s;
+}
+.avatar-circle.avatar-large {
+  width: 4rem;
+  height: 4rem;
+  font-size: 2rem;
+  margin: 0 auto;
+}
+
+.user-menu-dropdown .mat-menu-content {
+  padding: 0 !important;
+}
+
+.active-link {
+  background: rgba(255,255,255,0.15);
+  border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  nav {
+    display: none !important;
+  }
+} 

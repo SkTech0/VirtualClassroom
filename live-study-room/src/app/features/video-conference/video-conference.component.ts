@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { VideoService, VideoPeer, VideoCallState } from '../../core/services/video.service';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 @Component({
   selector: 'app-video-conference',
@@ -18,7 +19,8 @@ import { VideoService, VideoPeer, VideoCallState } from '../../core/services/vid
     MatButtonModule,
     MatIconModule,
     MatCardModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatToolbarModule
   ],
   templateUrl: './video-conference.component.html',
   styleUrls: ['./video-conference.component.css']
@@ -79,7 +81,7 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
         console.log('getUserMedia succeeded for this participant.');
       }
     } catch (err) {
-      this.snackBar.open('Unexpected error initializing video: ' + (err?.message || err), 'Close', { duration: 7000 });
+      this.snackBar.open('Unexpected error initializing video: ' + String(err), 'Close', { duration: 7000 });
       console.error('Unexpected error in initializeVideo:', err);
     }
   }
@@ -133,7 +135,7 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
       const message = newState ? 'Video enabled' : 'Video disabled';
       this.snackBar.open(message, 'Close', { duration: 2000 });
     } catch (err) {
-      this.snackBar.open('Error toggling video: ' + (err?.message || err), 'Close', { duration: 4000 });
+      this.snackBar.open('Error toggling video: ' + String(err), 'Close', { duration: 4000 });
       console.error('Error toggling video:', err);
     }
   }
@@ -144,7 +146,7 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
       const message = newState ? 'Audio enabled' : 'Audio disabled';
       this.snackBar.open(message, 'Close', { duration: 2000 });
     } catch (err) {
-      this.snackBar.open('Error toggling audio: ' + (err?.message || err), 'Close', { duration: 4000 });
+      this.snackBar.open('Error toggling audio: ' + String(err), 'Close', { duration: 4000 });
       console.error('Error toggling audio:', err);
     }
   }
@@ -155,7 +157,7 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
       const message = newState ? 'Screen sharing started' : 'Screen sharing stopped';
       this.snackBar.open(message, 'Close', { duration: 2000 });
     } catch (err) {
-      this.snackBar.open('Error toggling screen share: ' + (err?.message || err), 'Close', { duration: 4000 });
+      this.snackBar.open('Error toggling screen share: ' + String(err), 'Close', { duration: 4000 });
       console.error('Error toggling screen share:', err);
     }
   }
