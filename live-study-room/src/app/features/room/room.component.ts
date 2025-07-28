@@ -75,6 +75,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   pomodoroActive = false;
   pomodoroMode = 'work';
   leaderboard: any[] = [];
+  isVideoCallActive = false;
   private destroy$ = new Subject<void>();
   private pomodoroInterval: any;
 
@@ -230,6 +231,18 @@ export class RoomComponent implements OnInit, OnDestroy {
     if (this.room) {
       this.signalR.invoke('KnockKnock', this.room.code, 'all');
       this.snackBar.open('Knock knock sent!', 'Close', { duration: 2000 });
+    }
+  }
+
+  startVideoCall() {
+    if (this.room) {
+      this.router.navigate(['/video', this.room.code]);
+    }
+  }
+
+  joinVideoCall() {
+    if (this.room) {
+      this.router.navigate(['/video', this.room.code]);
     }
   }
 

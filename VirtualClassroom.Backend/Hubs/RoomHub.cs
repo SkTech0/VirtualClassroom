@@ -60,6 +60,51 @@ namespace VirtualClassroom.Backend.Hubs
             await Clients.Group(roomCode).SendAsync("ParticipantsChanged");
         }
 
+        // Video Conferencing Methods
+        public async Task JoinVideoCall(string roomCode)
+        {
+            var userId = Context.UserIdentifier;
+            var username = Context.User?.Identity?.Name ?? "Unknown User";
+            
+            await Clients.Group(roomCode).SendAsync("UserJoinedVideo", userId, username);
+        }
+
+        public async Task LeaveVideoCall(string roomCode)
+        {
+            var userId = Context.UserIdentifier;
+            await Clients.Group(roomCode).SendAsync("UserLeftVideo", userId);
+        }
+
+        public async Task SendVideoOffer(string roomCode, string targetUserId, object offer)
+        {
+            var fromUserId = Context.UserIdentifier;
+            await Clients.Group(roomCode).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
+        }
+
+        public async Task SendVideoAnswer(string roomCode, string targetUserId, object answer)
+        {
+            var fromUserId = Context.UserIdentifier;
+            await Clients.Group(roomCode).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
+        }
+
+        public async Task SendVideoIceCandidate(string roomCode, string targetUserId, object candidate)
+        {
+            var fromUserId = Context.UserIdentifier;
+            await Clients.Group(roomCode).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
+        }
+
+        public async Task ToggleVideo(string roomCode, bool isVideoEnabled)
+        {
+            var userId = Context.UserIdentifier;
+            await Clients.Group(roomCode).SendAsync("VideoToggle", new { userId, isVideoEnabled });
+        }
+
+        public async Task ToggleAudio(string roomCode, bool isAudioEnabled)
+        {
+            var userId = Context.UserIdentifier;
+            await Clients.Group(roomCode).SendAsync("AudioToggle", new { userId, isAudioEnabled });
+        }
+
         // Group management
         public override async Task OnConnectedAsync()
         {

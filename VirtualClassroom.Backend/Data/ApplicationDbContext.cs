@@ -13,6 +13,7 @@ namespace VirtualClassroom.Backend.Data
         public DbSet<Session> Sessions { get; set; }
         public DbSet<Pomodoro> Pomodoros { get; set; }
         public DbSet<LeaderboardEntry> LeaderboardEntries { get; set; }
+        public DbSet<VideoSession> VideoSessions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -57,6 +58,19 @@ namespace VirtualClassroom.Backend.Data
                 .HasOne(l => l.User)
                 .WithMany()
                 .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // VideoSession
+            modelBuilder.Entity<VideoSession>()
+                .HasOne(v => v.User)
+                .WithMany()
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<VideoSession>()
+                .HasOne(v => v.Room)
+                .WithMany()
+                .HasForeignKey(v => v.RoomCode)
+                .HasPrincipalKey(r => r.Code)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

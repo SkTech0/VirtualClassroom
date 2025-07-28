@@ -1,0 +1,99 @@
+<div class="video-conference-container">
+  <!-- Header -->
+  <div class="video-header">
+    <div class="room-info">
+      <h2>Video Conference</h2>
+      <p>Room: {{ roomCode }} | Participants: {{ getParticipantCount() }}</p>
+    </div>
+    <div class="header-actions">
+      <button mat-icon-button matTooltip="Copy Room Code" (click)="copyRoomCode()">
+        <mat-icon>content_copy</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Leave Call" (click)="leaveCall()" class="leave-btn">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Video Grid -->
+  <div class="video-grid">
+    <!-- Local Video -->
+    <div class="video-item local-video">
+      <video #localVideo autoplay playsinline muted></video>
+      <div class="video-overlay">
+        <div class="participant-name">You</div>
+        <div class="video-status">
+          <mat-icon *ngIf="!isVideoEnabled" class="status-icon">videocam_off</mat-icon>
+          <mat-icon *ngIf="!isAudioEnabled" class="status-icon">mic_off</mat-icon>
+          <mat-icon *ngIf="isScreenSharing" class="status-icon">screen_share</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remote Videos Container -->
+    <div #remoteVideosContainer class="remote-videos-container">
+      <!-- Remote videos will be dynamically added here -->
+    </div>
+
+    <!-- Placeholder for more participants -->
+    <div *ngFor="let i of [1,2,3,4,5,6]" class="video-placeholder" 
+         [class.hidden]="getRemoteParticipants().length >= i">
+      <mat-icon>person_add</mat-icon>
+      <span>Waiting for participant...</span>
+    </div>
+  </div>
+
+  <!-- Video Controls -->
+  <div class="video-controls">
+    <div class="control-group">
+      <button mat-fab 
+              [class.active]="isAudioEnabled"
+              [class.inactive]="!isAudioEnabled"
+              (click)="toggleAudio()"
+              matTooltip="{{ isAudioEnabled ? 'Mute Audio' : 'Unmute Audio' }}">
+        <mat-icon>{{ isAudioEnabled ? 'mic' : 'mic_off' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <button mat-fab 
+              [class.active]="isVideoEnabled"
+              [class.inactive]="!isVideoEnabled"
+              (click)="toggleVideo()"
+              matTooltip="{{ isVideoEnabled ? 'Turn Off Video' : 'Turn On Video' }}">
+        <mat-icon>{{ isVideoEnabled ? 'videocam' : 'videocam_off' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <button mat-fab 
+              [class.active]="isScreenSharing"
+              [class.inactive]="!isScreenSharing"
+              (click)="toggleScreenShare()"
+              matTooltip="{{ isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share' }}">
+        <mat-icon>{{ isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <button mat-fab 
+              class="leave-call-btn"
+              (click)="leaveCall()"
+              matTooltip="Leave Call">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="connection-status" *ngIf="!isInCall">
+    <mat-card>
+      <mat-card-content>
+        <div class="status-content">
+          <mat-icon class="status-icon">wifi</mat-icon>
+          <span>Connecting to video call...</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div> 

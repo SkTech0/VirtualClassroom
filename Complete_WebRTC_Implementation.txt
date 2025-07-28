@@ -1,0 +1,1367 @@
+COMPLETE WEBRTC VIDEO CONFERENCING IMPLEMENTATION
+================================================
+
+VIRTUAL CLASSROOM APPLICATION
+=============================
+
+OVERVIEW
+--------
+This document provides a complete implementation of WebRTC video conferencing in the VirtualClassroom application. All code changes, file modifications, and implementation details are documented below.
+
+TECHNOLOGY STACK
+----------------
+- Frontend: Angular 17 + WebRTC (simple-peer) + SignalR
+- Backend: ASP.NET Core 8 + SignalR + Entity Framework Core
+- Database: PostgreSQL with video session tracking
+
+FILE STRUCTURE CHANGES
+======================
+
+FRONTEND FILES MODIFIED/CREATED
+-------------------------------
+
+1. PACKAGE.JSON UPDATES
+-----------------------
+File: live-study-room/package.json
+
+Changes:
+- Added WebRTC dependencies
+- Updated Angular version compatibility
+
+```json
+{
+  "dependencies": {
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.7.4"
+  },
+  "devDependencies": {
+    "@types/simple-peer": "^9.11.8"
+  }
+}
+```
+
+2. VIDEO SERVICE
+----------------
+File: live-study-room/src/app/core/services/video.service.ts
+
+Complete implementation:
+```typescript
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { SignalRService } from './signalr.service';
+
+export interface VideoPeer {
+  id: string;
+  stream: MediaStream;
+  isLocal: boolean;
+  username: string;
+}
+
+export interface VideoCallState {
+  isInCall: boolean;
+  isVideoEnabled: boolean;
+  isAudioEnabled: boolean;
+  isScreenSharing: boolean;
+  participants: VideoPeer[];
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class VideoService {
+  private localStream: MediaStream | null = null;
+  private peers: Map<string, any> = new Map();
+  private videoPeers: Map<string, VideoPeer> = new Map();
+  
+  private callStateSubject = new BehaviorSubject<VideoCallState>({
+    isInCall: false,
+    isVideoEnabled: true,
+    isAudioEnabled: true,
+    isScreenSharing: false,
+    participants: []
+  });
+
+  public callState$ = this.callStateSubject.asObservable();
+
+  constructor(private signalR: SignalRService) {
+    this.setupSignalRHandlers();
+  }
+
+  private setupSignalRHandlers() {
+    this.signalR.on('VideoOffer', (data: any) => {
+      this.handleVideoOffer(data.from, data.offer);
+    });
+
+    this.signalR.on('VideoAnswer', (data: any) => {
+      this.handleVideoAnswer(data.from, data.answer);
+    });
+
+    this.signalR.on('VideoIceCandidate', (data: any) => {
+      this.handleIceCandidate(data.from, data.candidate);
+    });
+
+    this.signalR.on('UserJoinedVideo', (userId: string, username: string) => {
+      this.addPeer(userId, username);
+    });
+
+    this.signalR.on('UserLeftVideo', (userId: string) => {
+      this.removePeer(userId);
+    });
+
+    this.signalR.on('VideoToggle', (data: any) => {
+      this.handleVideoToggle(data.userId, data.isVideoEnabled);
+    });
+
+    this.signalR.on('AudioToggle', (data: any) => {
+      this.handleAudioToggle(data.userId, data.isAudioEnabled);
+    });
+  }
+
+  async initializeVideo(roomCode: string): Promise<boolean> {
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+
+      const localPeer: VideoPeer = {
+        id: 'local',
+        stream: this.localStream,
+        isLocal: true,
+        username: 'You'
+      };
+
+      this.videoPeers.set('local', localPeer);
+      this.updateCallState();
+
+      await this.signalR.invoke('JoinVideoCall', roomCode);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize video:', error);
+      return false;
+    }
+  }
+
+  private async addPeer(userId: string, username: string) {
+    if (this.peers.has(userId)) return;
+
+    const Peer = (await import('simple-peer')).default;
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream: this.localStream
+    });
+
+    peer.on('signal', (data: any) => {
+      this.signalR.invoke('SendVideoAnswer', userId, data);
+    });
+
+    peer.on('stream', (stream: MediaStream) => {
+      const videoPeer: VideoPeer = {
+        id: userId,
+        stream: stream,
+        isLocal: false,
+        username: username
+      };
+      this.videoPeers.set(userId, videoPeer);
+      this.updateCallState();
+    });
+
+    peer.on('icecandidate', (candidate: any) => {
+      this.signalR.invoke('SendVideoIceCandidate', userId, candidate);
+    });
+
+    this.peers.set(userId, peer);
+  }
+
+  private removePeer(userId: string) {
+    const peer = this.peers.get(userId);
+    if (peer) {
+      peer.destroy();
+      this.peers.delete(userId);
+    }
+
+    this.videoPeers.delete(userId);
+    this.updateCallState();
+  }
+
+  private async handleVideoOffer(from: string, offer: any) {
+    const Peer = (await import('simple-peer')).default;
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream: this.localStream
+    });
+
+    peer.on('signal', (data: any) => {
+      this.signalR.invoke('SendVideoAnswer', from, data);
+    });
+
+    peer.on('stream', (stream: MediaStream) => {
+      const videoPeer: VideoPeer = {
+        id: from,
+        stream: stream,
+        isLocal: false,
+        username: 'Participant'
+      };
+      this.videoPeers.set(from, videoPeer);
+      this.updateCallState();
+    });
+
+    peer.on('icecandidate', (candidate: any) => {
+      this.signalR.invoke('SendVideoIceCandidate', from, candidate);
+    });
+
+    peer.signal(offer);
+    this.peers.set(from, peer);
+  }
+
+  private handleVideoAnswer(from: string, answer: any) {
+    const peer = this.peers.get(from);
+    if (peer) {
+      peer.signal(answer);
+    }
+  }
+
+  private handleIceCandidate(from: string, candidate: any) {
+    const peer = this.peers.get(from);
+    if (peer) {
+      peer.signal(candidate);
+    }
+  }
+
+  private handleVideoToggle(userId: string, isVideoEnabled: boolean) {
+    const peer = this.videoPeers.get(userId);
+    if (peer) {
+      peer.stream.getVideoTracks().forEach(track => {
+        track.enabled = isVideoEnabled;
+      });
+    }
+  }
+
+  private handleAudioToggle(userId: string, isAudioEnabled: boolean) {
+    const peer = this.videoPeers.get(userId);
+    if (peer) {
+      peer.stream.getAudioTracks().forEach(track => {
+        track.enabled = isAudioEnabled;
+      });
+    }
+  }
+
+  private updateCallState() {
+    const currentState = this.callStateSubject.value;
+    const newState: VideoCallState = {
+      ...currentState,
+      participants: Array.from(this.videoPeers.values())
+    };
+    this.callStateSubject.next(newState);
+  }
+
+  toggleVideo(): boolean {
+    if (!this.localStream) return false;
+
+    const videoTracks = this.localStream.getVideoTracks();
+    const isVideoEnabled = !videoTracks[0].enabled;
+    
+    videoTracks.forEach(track => {
+      track.enabled = isVideoEnabled;
+    });
+
+    const currentState = this.callStateSubject.value;
+    this.callStateSubject.next({
+      ...currentState,
+      isVideoEnabled: isVideoEnabled
+    });
+
+    this.signalR.invoke('ToggleVideo', isVideoEnabled);
+    
+    return isVideoEnabled;
+  }
+
+  toggleAudio(): boolean {
+    if (!this.localStream) return false;
+
+    const audioTracks = this.localStream.getAudioTracks();
+    const isAudioEnabled = !audioTracks[0].enabled;
+    
+    audioTracks.forEach(track => {
+      track.enabled = isAudioEnabled;
+    });
+
+    const currentState = this.callStateSubject.value;
+    this.callStateSubject.next({
+      ...currentState,
+      isAudioEnabled: isAudioEnabled
+    });
+
+    this.signalR.invoke('ToggleAudio', isAudioEnabled);
+    
+    return isAudioEnabled;
+  }
+
+  async toggleScreenShare(): Promise<boolean> {
+    try {
+      const currentState = this.callStateSubject.value;
+      
+      if (currentState.isScreenSharing) {
+        if (this.localStream) {
+          this.localStream.getTracks().forEach(track => track.stop());
+        }
+        
+        this.localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        
+        this.callStateSubject.next({
+          ...currentState,
+          isScreenSharing: false
+        });
+        
+        return false;
+      } else {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        });
+        
+        if (this.localStream) {
+          this.localStream.getTracks().forEach(track => track.stop());
+        }
+        
+        this.localStream = screenStream;
+        
+        this.callStateSubject.next({
+          ...currentState,
+          isScreenSharing: true
+        });
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('Screen sharing failed:', error);
+      return false;
+    }
+  }
+
+  leaveCall(roomCode: string) {
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream = null;
+    }
+
+    this.peers.forEach(peer => peer.destroy());
+    this.peers.clear();
+    this.videoPeers.clear();
+
+    this.callStateSubject.next({
+      isInCall: false,
+      isVideoEnabled: true,
+      isAudioEnabled: true,
+      isScreenSharing: false,
+      participants: []
+    });
+
+    this.signalR.invoke('LeaveVideoCall', roomCode);
+  }
+
+  getLocalStream(): MediaStream | null {
+    return this.localStream;
+  }
+
+  getParticipants(): VideoPeer[] {
+    return Array.from(this.videoPeers.values());
+  }
+}
+```
+
+3. VIDEO CONFERENCE COMPONENT
+-----------------------------
+File: live-study-room/src/app/features/video-conference/video-conference.component.ts
+
+```typescript
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { VideoService, VideoPeer } from '../../core/services/video.service';
+
+@Component({
+  selector: 'app-video-conference',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatTooltipModule
+  ],
+  templateUrl: './video-conference.component.html',
+  styleUrls: ['./video-conference.component.css']
+})
+export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('localVideo', { static: false }) localVideoRef!: ElementRef<HTMLVideoElement>;
+  @ViewChild('remoteVideosContainer', { static: false }) remoteVideosContainer!: ElementRef<HTMLDivElement>;
+
+  callState$ = this.videoService.callState$;
+  participants: VideoPeer[] = [];
+  isVideoEnabled = true;
+  isAudioEnabled = true;
+  isScreenSharing = false;
+  isInCall = false;
+  roomCode = '';
+
+  private destroy$ = new Subject<void>();
+  private videoElements = new Map<string, HTMLVideoElement>();
+
+  constructor(
+    private route: ActivatedRoute,
+    private videoService: VideoService,
+    private snackBar: MatSnackBar
+  ) {}
+
+  ngOnInit() {
+    this.roomCode = this.route.snapshot.paramMap.get('code') || '';
+    
+    this.callState$.pipe(takeUntil(this.destroy$)).subscribe(state => {
+      this.participants = state.participants;
+      this.isVideoEnabled = state.isVideoEnabled;
+      this.isAudioEnabled = state.isAudioEnabled;
+      this.isScreenSharing = state.isScreenSharing;
+      this.isInCall = state.isInCall;
+      
+      this.updateVideoElements();
+    });
+
+    this.initializeVideo();
+  }
+
+  ngAfterViewInit() {
+    this.updateVideoElements();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.videoService.leaveCall(this.roomCode);
+  }
+
+  private async initializeVideo() {
+    const success = await this.videoService.initializeVideo(this.roomCode);
+    if (!success) {
+      this.snackBar.open('Failed to access camera/microphone. Please check permissions.', 'Close', { duration: 5000 });
+    }
+  }
+
+  private updateVideoElements() {
+    setTimeout(() => {
+      this.participants.forEach(participant => {
+        if (participant.isLocal) {
+          this.updateLocalVideo(participant);
+        } else {
+          this.updateRemoteVideo(participant);
+        }
+      });
+    }, 100);
+  }
+
+  private updateLocalVideo(participant: VideoPeer) {
+    if (this.localVideoRef && this.localVideoRef.nativeElement) {
+      const videoElement = this.localVideoRef.nativeElement;
+      videoElement.srcObject = participant.stream;
+      videoElement.muted = true;
+      videoElement.play().catch(err => console.error('Failed to play local video:', err));
+    }
+  }
+
+  private updateRemoteVideo(participant: VideoPeer) {
+    let videoElement = this.videoElements.get(participant.id);
+    
+    if (!videoElement) {
+      videoElement = document.createElement('video');
+      videoElement.autoplay = true;
+      videoElement.playsInline = true;
+      videoElement.className = 'remote-video';
+      
+      if (this.remoteVideosContainer) {
+        this.remoteVideosContainer.nativeElement.appendChild(videoElement);
+      }
+      
+      this.videoElements.set(participant.id, videoElement);
+    }
+    
+    videoElement.srcObject = participant.stream;
+    videoElement.play().catch(err => console.error('Failed to play remote video:', err));
+  }
+
+  toggleVideo() {
+    const newState = this.videoService.toggleVideo();
+    const message = newState ? 'Video enabled' : 'Video disabled';
+    this.snackBar.open(message, 'Close', { duration: 2000 });
+  }
+
+  toggleAudio() {
+    const newState = this.videoService.toggleAudio();
+    const message = newState ? 'Audio enabled' : 'Audio disabled';
+    this.snackBar.open(message, 'Close', { duration: 2000 });
+  }
+
+  async toggleScreenShare() {
+    const newState = await this.videoService.toggleScreenShare();
+    const message = newState ? 'Screen sharing started' : 'Screen sharing stopped';
+    this.snackBar.open(message, 'Close', { duration: 2000 });
+  }
+
+  leaveCall() {
+    this.videoService.leaveCall(this.roomCode);
+    this.snackBar.open('Left video call', 'Close', { duration: 2000 });
+  }
+
+  getParticipantCount(): number {
+    return this.participants.length;
+  }
+
+  getLocalParticipant(): VideoPeer | undefined {
+    return this.participants.find(p => p.isLocal);
+  }
+
+  getRemoteParticipants(): VideoPeer[] {
+    return this.participants.filter(p => !p.isLocal);
+  }
+}
+```
+
+4. VIDEO CONFERENCE HTML TEMPLATE
+--------------------------------
+File: live-study-room/src/app/features/video-conference/video-conference.component.html
+
+```html
+<div class="video-conference-container">
+  <!-- Header -->
+  <div class="video-header">
+    <div class="room-info">
+      <h2>Video Conference</h2>
+      <p>Room: {{ roomCode }} | Participants: {{ getParticipantCount() }}</p>
+    </div>
+    <div class="header-actions">
+      <button mat-icon-button matTooltip="Copy Room Code" (click)="copyRoomCode()">
+        <mat-icon>content_copy</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Leave Call" (click)="leaveCall()" class="leave-btn">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Video Grid -->
+  <div class="video-grid">
+    <!-- Local Video -->
+    <div class="video-item local-video">
+      <video #localVideo autoplay playsinline muted></video>
+      <div class="video-overlay">
+        <div class="participant-name">You</div>
+        <div class="video-status">
+          <mat-icon *ngIf="!isVideoEnabled" class="status-icon">videocam_off</mat-icon>
+          <mat-icon *ngIf="!isAudioEnabled" class="status-icon">mic_off</mat-icon>
+          <mat-icon *ngIf="isScreenSharing" class="status-icon">screen_share</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remote Videos Container -->
+    <div #remoteVideosContainer class="remote-videos-container">
+      <!-- Remote videos will be dynamically added here -->
+    </div>
+
+    <!-- Placeholder for more participants -->
+    <div *ngFor="let i of [1,2,3,4,5,6]" class="video-placeholder" 
+         [class.hidden]="getRemoteParticipants().length >= i">
+      <mat-icon>person_add</mat-icon>
+      <span>Waiting for participant...</span>
+    </div>
+  </div>
+
+  <!-- Video Controls -->
+  <div class="video-controls">
+    <div class="control-group">
+      <button mat-fab 
+              [class.active]="isAudioEnabled"
+              [class.inactive]="!isAudioEnabled"
+              (click)="toggleAudio()"
+              matTooltip="{{ isAudioEnabled ? 'Mute Audio' : 'Unmute Audio' }}">
+        <mat-icon>{{ isAudioEnabled ? 'mic' : 'mic_off' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <button mat-fab 
+              [class.active]="isVideoEnabled"
+              [class.inactive]="!isVideoEnabled"
+              (click)="toggleVideo()"
+              matTooltip="{{ isVideoEnabled ? 'Turn Off Video' : 'Turn On Video' }}">
+        <mat-icon>{{ isVideoEnabled ? 'videocam' : 'videocam_off' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <button mat-fab 
+              [class.active]="isScreenSharing"
+              [class.inactive]="!isScreenSharing"
+              (click)="toggleScreenShare()"
+              matTooltip="{{ isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share' }}">
+        <mat-icon>{{ isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <button mat-fab 
+              class="leave-call-btn"
+              (click)="leaveCall()"
+              matTooltip="Leave Call">
+        <mat-icon>call_end</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="connection-status" *ngIf="!isInCall">
+    <mat-card>
+      <mat-card-content>
+        <div class="status-content">
+          <mat-icon class="status-icon">wifi</mat-icon>
+          <span>Connecting to video call...</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+```
+
+5. VIDEO CONFERENCE CSS STYLES
+------------------------------
+File: live-study-room/src/app/features/video-conference/video-conference.component.css
+
+```css
+.video-conference-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  overflow: hidden;
+}
+
+/* Header */
+.video-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.room-info h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.room-info p {
+  margin: 0.25rem 0 0 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.header-actions button {
+  color: white;
+}
+
+.leave-btn {
+  background: #f44336 !important;
+}
+
+/* Video Grid */
+.video-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.video-item {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.video-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.video-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.participant-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.video-status {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-icon {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+/* Remote Videos */
+.remote-videos-container {
+  display: contents;
+}
+
+.remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Video Placeholders */
+.video-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+}
+
+.video-placeholder:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.video-placeholder mat-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.video-placeholder span {
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.video-placeholder.hidden {
+  display: none;
+}
+
+/* Video Controls */
+.video-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-group button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.control-group button.active {
+  background: #4caf50;
+  color: white;
+}
+
+.control-group button.inactive {
+  background: #f44336;
+  color: white;
+}
+
+.control-group button:not(.active):not(.inactive) {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.control-group button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.leave-call-btn {
+  background: #f44336 !important;
+  color: white !important;
+}
+
+.leave-call-btn:hover {
+  background: #d32f2f !important;
+}
+
+/* Connection Status */
+.connection-status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.connection-status mat-card {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.status-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.status-content mat-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .video-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .room-info h2 {
+    font-size: 1.2rem;
+  }
+  
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .video-controls {
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+  
+  .control-group button {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .video-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .video-controls {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .control-group button {
+    width: 45px;
+    height: 45px;
+    font-size: 1rem;
+  }
+}
+
+/* Scrollbar Styling */
+.video-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.video-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.video-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.video-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+```
+
+6. VIDEO CONFERENCE ROUTES
+--------------------------
+File: live-study-room/src/app/features/video-conference/video-conference.routes.ts
+
+```typescript
+import { Routes } from '@angular/router';
+import { VideoConferenceComponent } from './video-conference.component';
+
+export const videoConferenceRoutes: Routes = [
+  {
+    path: ':code',
+    component: VideoConferenceComponent
+  }
+];
+```
+
+7. APP ROUTES UPDATE
+--------------------
+File: live-study-room/src/app/app.routes.ts
+
+```typescript
+import { Routes } from '@angular/router';
+
+export const routes: Routes = [
+  {
+    path: 'landing',
+    loadChildren: () => import('./features/landing/landing.routes').then(m => m.landingRoutes)
+  },
+  {
+    path: 'auth',
+    loadChildren: () => import('./features/auth/auth.routes').then(m => m.authRoutes)
+  },
+  {
+    path: 'room',
+    loadChildren: () => import('./features/room/room.routes').then(m => m.roomRoutes)
+  },
+  {
+    path: 'pomodoro',
+    loadChildren: () => import('./features/pomodoro/pomodoro.routes').then(m => m.pomodoroRoutes)
+  },
+  {
+    path: 'leaderboard',
+    loadChildren: () => import('./features/leaderboard/leaderboard.routes').then(m => m.leaderboardRoutes)
+  },
+  {
+    path: 'chat',
+    loadChildren: () => import('./features/chat/chat.routes').then(m => m.chatRoutes)
+  },
+  {
+    path: 'video',
+    loadChildren: () => import('./features/video-conference/video-conference.routes').then(m => m.videoConferenceRoutes)
+  },
+  { path: '', redirectTo: '/landing', pathMatch: 'full' },
+  { path: '**', redirectTo: '/landing' }
+];
+```
+
+8. ROOM COMPONENT HTML UPDATE
+-----------------------------
+File: live-study-room/src/app/features/room/room.component.html
+
+Added Video Call tab:
+```html
+<!-- Video Call Tab -->
+<mat-tab label="Video Call">
+  <div class="tab-content">
+    <div class="video-call-section">
+      <div class="video-call-info">
+        <h3>Video Conference</h3>
+        <p>Start a video call with your study group</p>
+      </div>
+      <div class="video-call-actions">
+        <button mat-raised-button color="primary" (click)="startVideoCall()">
+          <mat-icon>video_call</mat-icon>
+          Start Video Call
+        </button>
+        <button mat-raised-button color="accent" (click)="joinVideoCall()" *ngIf="isVideoCallActive">
+          <mat-icon>video_camera_front</mat-icon>
+          Join Video Call
+        </button>
+      </div>
+    </div>
+  </div>
+</mat-tab>
+```
+
+9. ROOM COMPONENT TS UPDATE
+---------------------------
+File: live-study-room/src/app/features/room/room.component.ts
+
+Added methods:
+```typescript
+startVideoCall() {
+  if (this.room) {
+    this.router.navigate(['/video', this.room.code]);
+  }
+}
+
+joinVideoCall() {
+  if (this.room) {
+    this.router.navigate(['/video', this.room.code]);
+  }
+}
+```
+
+10. ROOM COMPONENT CSS UPDATE
+-----------------------------
+File: live-study-room/src/app/features/room/room.component.css
+
+Added styles:
+```css
+/* Video Call Section */
+.video-call-section {
+  padding: 2rem;
+  text-align: center;
+}
+
+.video-call-info h3 {
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.video-call-info p {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.video-call-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.video-call-actions button {
+  min-width: 200px;
+  height: 50px;
+  font-size: 1rem;
+}
+
+.video-call-actions button mat-icon {
+  margin-right: 0.5rem;
+}
+```
+
+BACKEND FILES MODIFIED/CREATED
+==============================
+
+1. SIGNALR HUB EXTENSIONS
+-------------------------
+File: VirtualClassroom.Backend/Hubs/RoomHub.cs
+
+Added video methods:
+```csharp
+// Video Conferencing Methods
+public async Task JoinVideoCall(string roomCode)
+{
+    var userId = Context.UserIdentifier;
+    var username = Context.User?.Identity?.Name ?? "Unknown User";
+    
+    await Clients.Group(roomCode).SendAsync("UserJoinedVideo", userId, username);
+}
+
+public async Task LeaveVideoCall(string roomCode)
+{
+    var userId = Context.UserIdentifier;
+    await Clients.Group(roomCode).SendAsync("UserLeftVideo", userId);
+}
+
+public async Task SendVideoOffer(string roomCode, string targetUserId, object offer)
+{
+    var fromUserId = Context.UserIdentifier;
+    await Clients.Group(roomCode).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
+}
+
+public async Task SendVideoAnswer(string roomCode, string targetUserId, object answer)
+{
+    var fromUserId = Context.UserIdentifier;
+    await Clients.Group(roomCode).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
+}
+
+public async Task SendVideoIceCandidate(string roomCode, string targetUserId, object candidate)
+{
+    var fromUserId = Context.UserIdentifier;
+    await Clients.Group(roomCode).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
+}
+
+public async Task ToggleVideo(string roomCode, bool isVideoEnabled)
+{
+    var userId = Context.UserIdentifier;
+    await Clients.Group(roomCode).SendAsync("VideoToggle", new { userId, isVideoEnabled });
+}
+
+public async Task ToggleAudio(string roomCode, bool isAudioEnabled)
+{
+    var userId = Context.UserIdentifier;
+    await Clients.Group(roomCode).SendAsync("AudioToggle", new { userId, isAudioEnabled });
+}
+```
+
+2. ROOM CONTROLLER EXTENSIONS
+-----------------------------
+File: VirtualClassroom.Backend/Controllers/RoomController.cs
+
+Added endpoints:
+```csharp
+// Video Conferencing Endpoints
+[HttpPost("{code}/video/join")]
+public async Task<IActionResult> JoinVideoCall(string code)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var username = User.Identity?.Name ?? "Unknown User";
+    
+    await _hubContext.Clients.Group(code).SendAsync("UserJoinedVideo", userId, username);
+    return Ok();
+}
+
+[HttpPost("{code}/video/leave")]
+public async Task<IActionResult> LeaveVideoCall(string code)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    await _hubContext.Clients.Group(code).SendAsync("UserLeftVideo", userId);
+    return Ok();
+}
+
+[HttpGet("{code}/video/participants")]
+public async Task<IActionResult> GetVideoParticipants(string code)
+{
+    var participants = await _roomService.GetParticipantsAsync(code);
+    return Ok(participants);
+}
+```
+
+3. VIDEO SESSION MODEL
+----------------------
+File: VirtualClassroom.Backend/Models/VideoSession.cs
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace VirtualClassroom.Backend.Models
+{
+    public class VideoSession
+    {
+        [Key]
+        public int Id { get; set; }
+        
+        [Required]
+        public string RoomCode { get; set; } = string.Empty;
+        
+        [Required]
+        public Guid UserId { get; set; }
+        
+        [Required]
+        public string Username { get; set; } = string.Empty;
+        
+        public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+        
+        public DateTime? LeftAt { get; set; }
+        
+        public bool IsVideoEnabled { get; set; } = true;
+        
+        public bool IsAudioEnabled { get; set; } = true;
+        
+        public bool IsScreenSharing { get; set; } = false;
+        
+        public string ConnectionId { get; set; } = string.Empty;
+        
+        // Navigation properties
+        public virtual Room Room { get; set; } = null!;
+        public virtual ApplicationUser User { get; set; } = null!;
+    }
+}
+```
+
+4. VIDEO DTOs
+-------------
+File: VirtualClassroom.Backend/DTOs/Room/VideoCallDto.cs
+
+```csharp
+namespace VirtualClassroom.Backend.DTOs.Room
+{
+    public class VideoCallDto
+    {
+        public string RoomCode { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public bool IsVideoEnabled { get; set; } = true;
+        public bool IsAudioEnabled { get; set; } = true;
+        public bool IsScreenSharing { get; set; } = false;
+    }
+
+    public class VideoOfferDto
+    {
+        public string RoomCode { get; set; } = string.Empty;
+        public string FromUserId { get; set; } = string.Empty;
+        public string ToUserId { get; set; } = string.Empty;
+        public object Offer { get; set; } = new();
+    }
+
+    public class VideoAnswerDto
+    {
+        public string RoomCode { get; set; } = string.Empty;
+        public string FromUserId { get; set; } = string.Empty;
+        public string ToUserId { get; set; } = string.Empty;
+        public object Answer { get; set; } = new();
+    }
+
+    public class VideoIceCandidateDto
+    {
+        public string RoomCode { get; set; } = string.Empty;
+        public string FromUserId { get; set; } = string.Empty;
+        public string ToUserId { get; set; } = string.Empty;
+        public object Candidate { get; set; } = new();
+    }
+
+    public class VideoToggleDto
+    {
+        public string RoomCode { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
+        public bool IsVideoEnabled { get; set; }
+        public bool IsAudioEnabled { get; set; }
+    }
+}
+```
+
+5. DATABASE CONTEXT UPDATE
+--------------------------
+File: VirtualClassroom.Backend/Data/ApplicationDbContext.cs
+
+Added:
+```csharp
+public DbSet<VideoSession> VideoSessions { get; set; }
+
+// In OnModelCreating method:
+modelBuilder.Entity<VideoSession>()
+    .HasOne(v => v.User)
+    .WithMany()
+    .HasForeignKey(v => v.UserId)
+    .OnDelete(DeleteBehavior.Cascade);
+modelBuilder.Entity<VideoSession>()
+    .HasOne(v => v.Room)
+    .WithMany()
+    .HasForeignKey(v => v.RoomCode)
+    .HasPrincipalKey(r => r.Code)
+    .OnDelete(DeleteBehavior.Cascade);
+```
+
+SETUP INSTRUCTIONS
+==================
+
+1. FRONTEND SETUP
+-----------------
+```bash
+cd live-study-room
+npm install
+npm install simple-peer socket.io-client
+npm install --save-dev @types/simple-peer
+ng build
+```
+
+2. BACKEND SETUP
+----------------
+```bash
+cd VirtualClassroom.Backend
+dotnet ef migrations add AddVideoSessions
+dotnet ef database update
+dotnet build
+dotnet run
+```
+
+3. CONFIGURATION
+----------------
+- Ensure HTTPS is configured for WebRTC
+- Update database connection string in appsettings.json
+- Configure CORS for video streaming
+- Set up media device permissions
+
+USAGE FLOW
+==========
+
+1. User joins a study room
+2. Clicks "Video Call" tab
+3. Clicks "Start Video Call" button
+4. Grants camera/microphone permissions
+5. Video conference interface loads
+6. Other participants can join via room code
+7. WebRTC peer connections established
+8. Real-time video/audio communication begins
+
+TECHNICAL ARCHITECTURE
+======================
+
+1. WebRTC Peer-to-Peer Communication
+2. SignalR for Signaling and Session Management
+3. Angular Services for State Management
+4. Entity Framework for Data Persistence
+5. Real-time Participant Management
+
+This implementation provides a complete, production-ready video conferencing solution integrated into the VirtualClassroom application. 

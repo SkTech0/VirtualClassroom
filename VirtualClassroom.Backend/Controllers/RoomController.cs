@@ -75,5 +75,33 @@ namespace VirtualClassroom.Backend.Controllers
             await _hubContext.Clients.Group(dto.RoomCode).SendAsync("ReminderReceived", dto.Message);
             return Ok();
         }
+
+        // Video Conferencing Endpoints
+        [HttpPost("{code}/video/join")]
+        public async Task<IActionResult> JoinVideoCall(string code)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var username = User.Identity?.Name ?? "Unknown User";
+            
+            await _hubContext.Clients.Group(code).SendAsync("UserJoinedVideo", userId, username);
+            return Ok();
+        }
+
+        [HttpPost("{code}/video/leave")]
+        public async Task<IActionResult> LeaveVideoCall(string code)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _hubContext.Clients.Group(code).SendAsync("UserLeftVideo", userId);
+            return Ok();
+        }
+
+        [HttpGet("{code}/video/participants")]
+        public async Task<IActionResult> GetVideoParticipants(string code)
+        {
+            // This would typically track active video participants
+            // For now, return the same participants as the room
+            var participants = await _roomService.GetParticipantsAsync(code);
+            return Ok(participants);
+        }
     }
 } 

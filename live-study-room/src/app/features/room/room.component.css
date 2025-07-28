@@ -280,6 +280,40 @@
       }
     }
 
+    /* Video Call Section */
+    .video-call-section {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .video-call-info h3 {
+      margin-bottom: 0.5rem;
+      color: #333;
+      font-size: 1.5rem;
+    }
+
+    .video-call-info p {
+      color: #666;
+      margin-bottom: 2rem;
+    }
+
+    .video-call-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .video-call-actions button {
+      min-width: 200px;
+      height: 50px;
+      font-size: 1rem;
+    }
+
+    .video-call-actions button mat-icon {
+      margin-right: 0.5rem;
+    }
+
     @media (max-width: 768px) {
       .room-content {
         grid-template-columns: 1fr;
@@ -301,5 +335,14 @@
       .room-meta {
         flex-direction: column;
         gap: 0.25rem;
+      }
+
+      .video-call-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .video-call-actions button {
+        min-width: 250px;
       }
     }

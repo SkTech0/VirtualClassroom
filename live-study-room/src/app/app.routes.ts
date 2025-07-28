@@ -25,6 +25,10 @@ export const routes: Routes = [
     path: 'chat',
     loadChildren: () => import('./features/chat/chat.routes').then(m => m.chatRoutes)
   },
+  {
+    path: 'video',
+    loadChildren: () => import('./features/video-conference/video-conference.routes').then(m => m.videoConferenceRoutes)
+  },
   { path: '', redirectTo: '/landing', pathMatch: 'full' },
   { path: '**', redirectTo: '/landing' }
 ];

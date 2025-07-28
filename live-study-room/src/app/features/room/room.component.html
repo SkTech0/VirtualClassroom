@@ -81,8 +81,30 @@
           <mat-tab-group class="room-tabs">
             <!-- Chat Tab -->
             <mat-tab label="Chat">
-  <app-chat [roomCode]="room.code"></app-chat>
-</mat-tab>
+              <app-chat [roomCode]="room.code"></app-chat>
+            </mat-tab>
+
+            <!-- Video Call Tab -->
+            <mat-tab label="Video Call">
+              <div class="tab-content">
+                <div class="video-call-section">
+                  <div class="video-call-info">
+                    <h3>Video Conference</h3>
+                    <p>Start a video call with your study group</p>
+                  </div>
+                  <div class="video-call-actions">
+                    <button mat-raised-button color="primary" (click)="startVideoCall()">
+                      <mat-icon>video_call</mat-icon>
+                      Start Video Call
+                    </button>
+                    <button mat-raised-button color="accent" (click)="joinVideoCall()" *ngIf="isVideoCallActive">
+                      <mat-icon>video_camera_front</mat-icon>
+                      Join Video Call
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
 
 
 
