@@ -6,7 +6,7 @@
   </div>
 
   <!-- Navigation Links -->
-  <nav class="d-none d-md-flex gap-3">
+  <nav class="d-none d-md-flex gap-3" *ngIf="user">
     <a mat-button routerLink="/room" routerLinkActive="active-link">
       <mat-icon>meeting_room</mat-icon>
       <span class="d-none d-lg-inline">Rooms</span>

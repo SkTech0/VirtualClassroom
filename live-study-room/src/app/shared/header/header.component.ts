@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
@@ -28,7 +28,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   user: { username: string; email: string } | null = null;
   private userSub!: Subscription;
 
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, private router: Router) {}
 
   ngOnInit(): void {
     this.userSub = this.auth.currentUser$.subscribe((u) => {
@@ -44,5 +44,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   logout(): void {
     this.auth.logout();
+    this.router.navigate(['/']); // Redirect to landing page after logout
   }
 }
