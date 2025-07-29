@@ -17,6 +17,12 @@
     </a>
   </nav>
 
+  <!-- Show Sign Up and Sign In when not logged in -->
+  <div class="d-none d-md-flex gap-3" *ngIf="!user">
+    <a mat-button color="primary" routerLink="/auth/register">Sign Up</a>
+    <a mat-button color="accent" routerLink="/auth/login">Sign In</a>
+  </div>
+
   <!-- User Info and Menu -->
   <ng-container *ngIf="user">
     <div class="d-flex align-items-center gap-2">

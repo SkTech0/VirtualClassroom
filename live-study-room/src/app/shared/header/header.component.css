@@ -1,6 +1,7 @@
 mat-toolbar {
-  min-height: 64px;
-  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  border-bottom: 0px solid #e0e0e0;
   z-index: 1000;
 }
 
