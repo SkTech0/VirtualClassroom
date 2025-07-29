@@ -54,4 +54,12 @@ mat-toolbar {
   nav {
     display: none !important;
   }
-} 
+}
+
+a[mat-button], button[mat-button] {
+  color: #fff !important; /* White text for better contrast */
+}
+
+.mat-icon {
+  color: #fff !important; /* White icons for better contrast */
+}
