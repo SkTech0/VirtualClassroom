@@ -29,6 +29,9 @@ mat-toolbar {
   font-size: 1.2rem;
   box-shadow: 0 2px 8px rgba(102,126,234,0.08);
   transition: background 0.2s;
+  position: relative;
+  bottom: 9px;
+  right: 7px;
 }
 .avatar-circle.avatar-large {
   width: 4rem;

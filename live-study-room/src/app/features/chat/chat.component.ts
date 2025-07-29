@@ -41,7 +41,6 @@ export class ChatComponent implements OnInit, OnDestroy {
     });
   }
 
-
   ngOnInit() {
     if (!this.roomCode) return;
 
@@ -62,11 +61,12 @@ export class ChatComponent implements OnInit, OnDestroy {
 
     this.sending = true;
     const msgText = this.form.value.message!;
-    const user = this.auth.getUserFromStorage() || 'Me';
+    const userObj = this.auth.getUserFromStorage();
+    const username = userObj?.username || 'Me';
     const timestamp = new Date().toISOString();
 
     const msg: ChatMessage = {
-      user,
+      user: username,
       message: msgText,
       timestamp,
     };

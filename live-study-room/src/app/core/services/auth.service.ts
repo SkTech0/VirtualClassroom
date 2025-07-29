@@ -5,12 +5,13 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 export interface AuthResponse {
   token: string;
   username: string;
+  email: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly BASE_URL = 'http://localhost:5275/api/auth'; // Update as needed
-  private currentUserSubject = new BehaviorSubject<any | null>(this.getUserFromStorage());
+  private currentUserSubject = new BehaviorSubject<{ username: string; email: string } | null>(this.getUserFromStorage());
   currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {}
@@ -38,33 +39,39 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
-    if (!res || !res.token || !res.username) {
+    if (!res || !res.token || !res.username || !res.email) {
       console.error('Invalid response data. Cannot set session.');
       return;
     }
 
     localStorage.setItem('token', res.token);
+    const user = {
+      username: res.username,
+      email: res.email
+    };
+
     try {
-      localStorage.setItem('username', JSON.stringify(res.username));
+      localStorage.setItem('user', JSON.stringify(user));
     } catch (error) {
       console.error('Error saving user data to localStorage:', error);
     }
-    this.currentUserSubject.next(res.username);
+
+    this.currentUserSubject.next(user);
   }
 
-  public getUserFromStorage(): any {
-    const userData = localStorage.getItem('username'); // Retrieve data from localStorage
+  public getUserFromStorage(): { username: string; email: string } | null {
+    const userData = localStorage.getItem('user');
     if (!userData) {
       console.warn('No user data found in localStorage');
-      return null; // Return null if no data is found
+      return null;
     }
 
     try {
-      return JSON.parse(userData); // Parse the JSON string
+      return JSON.parse(userData);
     } catch (error) {
       console.error('Error parsing user data from localStorage:', error);
-      localStorage.removeItem('username'); // Remove invalid data to prevent repeated errors
-      return null; // Return null if parsing fails
+      localStorage.removeItem('user');
+      return null;
     }
   }
 }

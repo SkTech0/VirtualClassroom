@@ -15,25 +15,31 @@
       <mat-icon>leaderboard</mat-icon>
       <span class="d-none d-lg-inline">Leaderboard</span>
     </a>
-    <!-- Add more links as needed -->
   </nav>
 
   <!-- User Info and Menu -->
-  <div *ngIf="auth.currentUser$ | async as user" class="d-flex align-items-center gap-2">
-    <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-avatar modern-avatar" matTooltip="Account">
-      <span class="avatar-circle">{{ user.username ? (user.username[0] | uppercase) : '?' }}</span>
-    </button>
-    <mat-menu #userMenu="matMenu" class="user-menu-dropdown">
-      <div class="px-3 py-3 text-center">
-        <span class="avatar-circle avatar-large mb-2">{{ user.username ? (user.username[0] | uppercase) : '?' }}</span>
-        <div class="fw-bold mt-1">{{ user.username }}</div>
-        <div class="text-muted small">{{ user.email }}</div>
-      </div>
-      <mat-divider></mat-divider>
-      <button mat-raised-button color="warn" class="w-100 mt-2" (click)="logout()">
-        <mat-icon>logout</mat-icon>
-        <span class="ms-2">Logout</span>
+  <ng-container *ngIf="user">
+    <div class="d-flex align-items-center gap-2">
+      <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-avatar" matTooltip="Account">
+        <span class="avatar-circle">
+          {{ user.username[0] | uppercase }}
+        </span>
       </button>
-    </mat-menu>
-  </div>
-</mat-toolbar> 
+
+      <mat-menu #userMenu="matMenu">
+        <div class="px-3 py-3 text-center">
+          <span class="avatar-circle avatar-large mb-2">
+            {{ user.username[0] | uppercase }}
+          </span>
+          <div class="fw-bold mt-1">{{ user.username }}</div>
+          <div class="text-muted small">{{ user.email }}</div>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-raised-button color="warn" class="w-100 mt-2" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span class="ms-2">Logout</span>
+        </button>
+      </mat-menu>
+    </div>
+  </ng-container>
+</mat-toolbar>
