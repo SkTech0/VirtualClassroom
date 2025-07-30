@@ -1,351 +1,180 @@
+// video.service.ts
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { SignalRService } from './signalr.service';
+import Peer, { MediaConnection } from 'peerjs';
+import { BehaviorSubject } from 'rxjs';
 
 export interface VideoPeer {
   id: string;
+  username: string;
   stream: MediaStream;
   isLocal: boolean;
-  username: string;
 }
 
 export interface VideoCallState {
-  isInCall: boolean;
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
+  isInCall: boolean;
   isScreenSharing: boolean;
   participants: VideoPeer[];
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class VideoService {
   private localStream: MediaStream | null = null;
-  private peers: Map<string, any> = new Map(); // simple-peer instances
-  private videoPeers: Map<string, VideoPeer> = new Map();
-  
+  private currentCall: MediaConnection | null = null;
+  private peer!: Peer;
+
   private callStateSubject = new BehaviorSubject<VideoCallState>({
-    isInCall: false,
     isVideoEnabled: true,
     isAudioEnabled: true,
+    isInCall: false,
     isScreenSharing: false,
     participants: []
   });
 
   public callState$ = this.callStateSubject.asObservable();
-
-  constructor(private signalR: SignalRService) {
-    this.setupSignalRHandlers();
+  
+  get callStateSnapshot(): VideoCallState {
+    return this.callStateSubject.getValue();
   }
-
-  private setupSignalRHandlers() {
-    this.signalR.on('VideoOffer', (data: any) => {
-      this.handleVideoOffer(data.from, data.offer);
-    });
-
-    this.signalR.on('VideoAnswer', (data: any) => {
-      this.handleVideoAnswer(data.from, data.answer);
-    });
-
-    this.signalR.on('VideoIceCandidate', (data: any) => {
-      this.handleIceCandidate(data.from, data.candidate);
-    });
-
-    this.signalR.on('UserJoinedVideo', (...args: any[]) => {
-      const [userId, username] = args;
-      this.addPeer(userId, username);
-    });
-
-    this.signalR.on('UserLeftVideo', (userId: string) => {
-      this.removePeer(userId);
-    });
-
-    this.signalR.on('VideoToggle', (data: any) => {
-      this.handleVideoToggle(data.userId, data.isVideoEnabled);
-    });
-
-    this.signalR.on('AudioToggle', (data: any) => {
-      this.handleAudioToggle(data.userId, data.isAudioEnabled);
-    });
-  }
-
-  async initializeVideo(roomCode: string): Promise<boolean> {
-    try {
-      // Get user media
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      });
-      console.log('getUserMedia succeeded for this participant.');
-      // Add local stream to participants
-      const localPeer: VideoPeer = {
-        id: 'local',
-        stream: this.localStream,
-        isLocal: true,
-        username: 'You'
-      };
-      this.videoPeers.set('local', localPeer);
-      this.updateCallState();
-      // Join video call in SignalR
-      await this.signalR.invoke('JoinVideoCall', roomCode);
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize video (getUserMedia):', error);
-      return false;
-    }
-  }
-
-  private async addPeer(userId: string, username: string) {
-    if (this.peers.has(userId)) return;
-    try {
-      const Peer = (await import('simple-peer')).default;
-      const peer = new Peer({
-        initiator: false,
-        trickle: false,
-        stream: this.localStream ?? undefined
-      });
-      peer.on('signal', (data: any) => {
-        this.signalR.invoke('SendVideoAnswer', userId, data);
-      });
-      peer.on('stream', (stream: MediaStream) => {
-        const videoPeer: VideoPeer = {
-          id: userId,
-          stream: stream,
-          isLocal: false,
-          username: username
-        };
-        this.videoPeers.set(userId, videoPeer);
-        this.updateCallState();
-      });
-      peer.on('icecandidate', (candidate: any) => {
-        this.signalR.invoke('SendVideoIceCandidate', userId, candidate);
-      });
-      peer.on('error', (err: any) => {
-        console.error('Peer connection error (addPeer):', err);
-      });
-      this.peers.set(userId, peer);
-    } catch (err) {
-      console.error('Error creating peer connection (addPeer):', err);
-    }
-  }
-
-  private removePeer(userId: string) {
-    const peer = this.peers.get(userId);
-    if (peer) {
-      peer.destroy();
-      this.peers.delete(userId);
-    }
-
-    this.videoPeers.delete(userId);
-    this.updateCallState();
-  }
-
-  private async handleVideoOffer(from: string, offer: any) {
-    try {
-      const Peer = (await import('simple-peer')).default;
-      const peer = new Peer({
-        initiator: false,
-        trickle: false,
-        stream: this.localStream ?? undefined
-      });
-      peer.on('signal', (data: any) => {
-        this.signalR.invoke('SendVideoAnswer', from, data);
-      });
-      peer.on('stream', (stream: MediaStream) => {
-        const videoPeer: VideoPeer = {
-          id: from,
-          stream: stream,
-          isLocal: false,
-          username: 'Participant'
-        };
-        this.videoPeers.set(from, videoPeer);
-        this.updateCallState();
-      });
-      peer.on('icecandidate', (candidate: any) => {
-        this.signalR.invoke('SendVideoIceCandidate', from, candidate);
-      });
-      peer.on('error', (err: any) => {
-        console.error('Peer connection error (handleVideoOffer):', err);
-      });
-      peer.signal(offer);
-      this.peers.set(from, peer);
-    } catch (err) {
-      console.error('Error handling video offer:', err);
-    }
-  }
-
-  private handleVideoAnswer(from: string, answer: any) {
-    try {
-      const peer = this.peers.get(from);
-      if (peer) {
-        peer.signal(answer);
-      }
-    } catch (err) {
-      console.error('Error handling video answer:', err);
-    }
-  }
-
-  private handleIceCandidate(from: string, candidate: any) {
-    try {
-      const peer = this.peers.get(from);
-      if (peer) {
-        peer.signal(candidate);
-      }
-    } catch (err) {
-      console.error('Error handling ICE candidate:', err);
-    }
-  }
-
-  private handleVideoToggle(userId: string, isVideoEnabled: boolean) {
-    const peer = this.videoPeers.get(userId);
-    if (peer) {
-      peer.stream.getVideoTracks().forEach(track => {
-        track.enabled = isVideoEnabled;
-      });
-    }
-  }
-
-  private handleAudioToggle(userId: string, isAudioEnabled: boolean) {
-    const peer = this.videoPeers.get(userId);
-    if (peer) {
-      peer.stream.getAudioTracks().forEach(track => {
-        track.enabled = isAudioEnabled;
-      });
-    }
-  }
-
-  private updateCallState() {
-    const currentState = this.callStateSubject.value;
-    const newState: VideoCallState = {
-      ...currentState,
-      participants: Array.from(this.videoPeers.values())
-    };
-    this.callStateSubject.next(newState);
-  }
-
-  toggleVideo(): boolean {
-    if (!this.localStream) return false;
-
-    const videoTracks = this.localStream.getVideoTracks();
-    const isVideoEnabled = !videoTracks[0].enabled;
-    
-    videoTracks.forEach(track => {
-      track.enabled = isVideoEnabled;
-    });
-
-    const currentState = this.callStateSubject.value;
-    this.callStateSubject.next({
-      ...currentState,
-      isVideoEnabled: isVideoEnabled
-    });
-
-    // Notify other participants
-    this.signalR.invoke('ToggleVideo', isVideoEnabled);
-    
-    return isVideoEnabled;
-  }
-
-  toggleAudio(): boolean {
-    if (!this.localStream) return false;
-
-    const audioTracks = this.localStream.getAudioTracks();
-    const isAudioEnabled = !audioTracks[0].enabled;
-    
-    audioTracks.forEach(track => {
-      track.enabled = isAudioEnabled;
-    });
-
-    const currentState = this.callStateSubject.value;
-    this.callStateSubject.next({
-      ...currentState,
-      isAudioEnabled: isAudioEnabled
-    });
-
-    // Notify other participants
-    this.signalR.invoke('ToggleAudio', isAudioEnabled);
-    
-    return isAudioEnabled;
-  }
-
-  async toggleScreenShare(): Promise<boolean> {
-    try {
-      const currentState = this.callStateSubject.value;
-      
-      if (currentState.isScreenSharing) {
-        // Stop screen sharing
-        if (this.localStream) {
-          this.localStream.getTracks().forEach(track => track.stop());
-        }
-        
-        // Reinitialize camera/microphone
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        
-        this.callStateSubject.next({
-          ...currentState,
-          isScreenSharing: false
-        });
-        
-        return false;
-      } else {
-        // Start screen sharing
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: true
-        });
-        
-        if (this.localStream) {
-          this.localStream.getTracks().forEach(track => track.stop());
-        }
-        
-        this.localStream = screenStream;
-        
-        this.callStateSubject.next({
-          ...currentState,
-          isScreenSharing: true
-        });
-        
-        return true;
-      }
-    } catch (error) {
-      console.error('Screen sharing failed:', error);
-      return false;
-    }
-  }
-
-  leaveCall(roomCode: string) {
-    // Stop all local streams
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
-      this.localStream = null;
-    }
-
-    // Destroy all peer connections
-    this.peers.forEach(peer => peer.destroy());
-    this.peers.clear();
-    this.videoPeers.clear();
-
-    // Update call state
-    this.callStateSubject.next({
-      isInCall: false,
-      isVideoEnabled: true,
-      isAudioEnabled: true,
-      isScreenSharing: false,
-      participants: []
-    });
-
-    // Notify SignalR
-    this.signalR.invoke('LeaveVideoCall', roomCode);
-  }
-
   getLocalStream(): MediaStream | null {
     return this.localStream;
   }
 
-  getParticipants(): VideoPeer[] {
-    return Array.from(this.videoPeers.values());
+  getCallState(): VideoCallState {
+    return this.callStateSubject.value;
   }
-} 
+
+  getPeers(): VideoPeer[] {
+    return this.callStateSubject.value.participants;
+  }
+
+  async initializeVideo(): Promise<boolean> {
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      this.peer = new Peer();
+
+      this.peer.on('open', (id) => {
+        console.log('My peer ID is: ' + id);
+        this.addParticipant({
+          id,
+          username: 'Me',
+          stream: this.localStream!,
+          isLocal: true
+        });
+      });
+
+      this.peer.on('call', (call: MediaConnection) => {
+        call.answer(this.localStream!);
+        call.on('stream', (remoteStream) => {
+          this.addParticipant({
+            id: call.peer,
+            username: 'Guest',
+            stream: remoteStream,
+            isLocal: false
+          });
+        });
+        this.currentCall = call;
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error accessing media devices.', error);
+      return false;
+    }
+  }
+
+  connectToPeer(peerId: string) {
+    if (!this.peer || !this.localStream) return;
+
+    const call = this.peer.call(peerId, this.localStream);
+    call.on('stream', (remoteStream) => {
+      this.addParticipant({
+        id: peerId,
+        username: 'Guest',
+        stream: remoteStream,
+        isLocal: false
+      });
+    });
+    this.currentCall = call;
+  }
+
+  private addParticipant(participant: VideoPeer) {
+    const currentState = this.callStateSubject.value;
+    const exists = currentState.participants.some(p => p.id === participant.id);
+
+    if (!exists) {
+      this.callStateSubject.next({
+        ...currentState,
+        isInCall: true,
+        participants: [...currentState.participants, participant]
+      });
+    }
+  }
+
+  toggleVideo(): boolean {
+    if (this.localStream) {
+      const videoTrack = this.localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        const newState = {
+          ...this.callStateSubject.value,
+          isVideoEnabled: videoTrack.enabled
+        };
+        this.callStateSubject.next(newState);
+        return videoTrack.enabled;
+      }
+    }
+    return false;
+  }
+
+  toggleAudio(): boolean {
+    if (this.localStream) {
+      const audioTrack = this.localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        const newState = {
+          ...this.callStateSubject.value,
+          isAudioEnabled: audioTrack.enabled
+        };
+        this.callStateSubject.next(newState);
+        return audioTrack.enabled;
+      }
+    }
+    return false;
+  }
+
+  toggleScreenShare(): boolean {
+    const newState = !this.callStateSubject.value.isScreenSharing;
+    this.callStateSubject.next({
+      ...this.callStateSubject.value,
+      isScreenSharing: newState
+    });
+    return newState;
+  }
+
+  leaveCall(): void {
+    if (this.currentCall) {
+      this.currentCall.close();
+      this.currentCall = null;
+    }
+
+    this.callStateSubject.value.participants.forEach(p => {
+      p.stream.getTracks().forEach(track => track.stop());
+    });
+
+    this.callStateSubject.next({
+      isAudioEnabled: false,
+      isVideoEnabled: false,
+      isInCall: false,
+      isScreenSharing: false,
+      participants: []
+    });
+
+    this.localStream = null;
+
+    if (this.peer && !this.peer.destroyed) {
+      this.peer.destroy();
+    }
+  }
+}

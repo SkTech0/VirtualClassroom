@@ -1,4 +1,11 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+  AfterViewInit
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -58,7 +65,8 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
       this.isInCall = state.isInCall;
       this.updateVideoElements();
     });
-    await this.initializeVideo();
+
+    await this.initializeVideo(this.roomCode);
   }
 
   ngAfterViewInit() {
@@ -68,21 +76,21 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    this.videoService.leaveCall(this.roomCode);
+    this.videoService.leaveCall();
   }
 
-  private async initializeVideo() {
+  private async initializeVideo(roomCode: string) {
     try {
-      const success = await this.videoService.initializeVideo(this.roomCode);
+      const success = await this.videoService.initializeVideo();
       if (!success) {
-        this.snackBar.open('Failed to access camera/microphone. Please check permissions and reload.', 'Close', { duration: 7000 });
+        this.snackBar.open('Failed to access camera/microphone.', 'Close', { duration: 7000 });
         console.error('getUserMedia failed for this participant.');
       } else {
-        console.log('getUserMedia succeeded for this participant.');
+        console.log('Media initialized and joined room.');
       }
     } catch (err) {
-      this.snackBar.open('Unexpected error initializing video: ' + String(err), 'Close', { duration: 7000 });
-      console.error('Unexpected error in initializeVideo:', err);
+      this.snackBar.open('Error initializing video: ' + String(err), 'Close', { duration: 7000 });
+      console.error('Error in initializeVideo:', err);
     }
   }
 
@@ -99,72 +107,72 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   private updateLocalVideo(participant: VideoPeer) {
-    if (this.localVideoRef && this.localVideoRef.nativeElement) {
-      const videoElement = this.localVideoRef.nativeElement;
+    const videoElement = this.localVideoRef?.nativeElement;
+    if (videoElement && participant.stream) {
       videoElement.srcObject = participant.stream;
-      videoElement.muted = true; // Always mute local video
-      videoElement.play().catch(err => console.error('Failed to play local video:', err));
+      videoElement.muted = true;
+      videoElement.play().catch(err => console.error('Play local video error:', err));
     }
   }
 
   private updateRemoteVideo(participant: VideoPeer) {
     let videoElement = this.videoElements.get(participant.id);
-    
+
     if (!videoElement) {
       videoElement = document.createElement('video');
       videoElement.autoplay = true;
       videoElement.playsInline = true;
       videoElement.className = 'remote-video';
-      
-      if (this.remoteVideosContainer) {
+
+      if (this.remoteVideosContainer?.nativeElement) {
         this.remoteVideosContainer.nativeElement.appendChild(videoElement);
       }
-      
+
       this.videoElements.set(participant.id, videoElement);
     }
-    
-    videoElement.srcObject = participant.stream;
-    videoElement.play().catch(err => {
-      console.error('Failed to play remote video for participant', participant.id, err);
-    });
+
+    if (participant.stream) {
+      videoElement.srcObject = participant.stream;
+      videoElement.play().catch(err => console.error('Play remote video error:', err));
+    }
   }
 
   toggleVideo() {
     try {
-      const newState = this.videoService.toggleVideo();
-      const message = newState ? 'Video enabled' : 'Video disabled';
-      this.snackBar.open(message, 'Close', { duration: 2000 });
+      this.videoService.toggleVideo();
+      const newState = this.videoService.callStateSnapshot.isVideoEnabled;
+      this.snackBar.open(newState ? 'Video enabled' : 'Video disabled', 'Close', { duration: 2000 });
     } catch (err) {
       this.snackBar.open('Error toggling video: ' + String(err), 'Close', { duration: 4000 });
-      console.error('Error toggling video:', err);
     }
   }
 
   toggleAudio() {
     try {
-      const newState = this.videoService.toggleAudio();
-      const message = newState ? 'Audio enabled' : 'Audio disabled';
-      this.snackBar.open(message, 'Close', { duration: 2000 });
+      this.videoService.toggleAudio();
+      const newState = this.videoService.callStateSnapshot.isAudioEnabled;
+      this.snackBar.open(newState ? 'Audio enabled' : 'Audio muted', 'Close', { duration: 2000 });
     } catch (err) {
       this.snackBar.open('Error toggling audio: ' + String(err), 'Close', { duration: 4000 });
-      console.error('Error toggling audio:', err);
     }
   }
 
   async toggleScreenShare() {
     try {
       const newState = await this.videoService.toggleScreenShare();
-      const message = newState ? 'Screen sharing started' : 'Screen sharing stopped';
-      this.snackBar.open(message, 'Close', { duration: 2000 });
+      this.snackBar.open(
+        newState ? 'Screen sharing started' : 'Screen sharing stopped',
+        'Close',
+        { duration: 2000 }
+      );
     } catch (err) {
       this.snackBar.open('Error toggling screen share: ' + String(err), 'Close', { duration: 4000 });
-      console.error('Error toggling screen share:', err);
     }
   }
 
   leaveCall() {
-    this.videoService.leaveCall(this.roomCode);
-    this.snackBar.open('Left video call', 'Close', { duration: 2000 });
+    this.videoService.leaveCall();
+    this.snackBar.open('Left the call.', 'Close', { duration: 2000 });
   }
 
   getParticipantCount(): number {
@@ -181,6 +189,6 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
   copyRoomCode() {
     navigator.clipboard.writeText(this.roomCode);
-    this.snackBar.open('Room code copied to clipboard!', 'Close', { duration: 2000 });
+    this.snackBar.open('Room code copied!', 'Close', { duration: 2000 });
   }
-} 
+}

@@ -1,4 +1,5 @@
 <div class="container-fluid py-3 video-conference-container">
+
   <!-- Header -->
   <mat-toolbar color="primary" class="d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex flex-column">
@@ -17,6 +18,7 @@
 
   <!-- Video Grid -->
   <div class="row g-3 justify-content-center video-grid">
+
     <!-- Local Video -->
     <div class="col-12 col-md-6 col-lg-4 position-relative mb-3">
       <mat-card class="h-100 p-0 position-relative">
@@ -32,27 +34,70 @@
       </mat-card>
     </div>
 
-    <!-- Remote Videos Container -->
-    <ng-container #remoteVideosContainer></ng-container>
-
-    <!-- Placeholder for more participants -->
-    <div *ngFor="let i of [1,2,3,4,5,6]" class="col-12 col-md-6 col-lg-4 mb-3 video-placeholder d-flex flex-column align-items-center justify-content-center border border-secondary rounded p-4 bg-light text-muted" [class.hidden]="getRemoteParticipants().length >= i">
-      <mat-icon class="mb-2">person_add</mat-icon>
-      <span>Waiting for participant...</span>
+    <!-- Remote Participants -->
+    <div *ngFor="let participant of getRemoteParticipants()" class="col-12 col-md-6 col-lg-4 position-relative mb-3">
+      <mat-card class="h-100 p-0 position-relative">
+        <video
+          #remoteVideo
+          autoplay
+          playsinline
+          class="w-100 h-100 remote-video"
+          [attr.data-id]="participant.id"
+        ></video>
+        <div class="video-overlay d-flex justify-content-between align-items-center w-100">
+          <span class="participant-name">{{ participant.username }}</span>
+          <span class="video-status">
+            <mat-icon
+              *ngIf="participant.stream?.getVideoTracks()?.length && !participant.stream.getVideoTracks()[0].enabled"
+              class="status-icon"
+            >
+              videocam_off
+            </mat-icon>
+            <mat-icon
+              *ngIf="participant.stream?.getAudioTracks()?.length && !participant.stream.getAudioTracks()[0].enabled"
+              class="status-icon"
+            >
+              mic_off
+            </mat-icon>
+          </span>
+        </div>
+      </mat-card>
     </div>
+
   </div>
 
   <!-- Video Controls -->
   <div class="d-flex justify-content-center align-items-center gap-3 py-3 video-controls">
-    <button mat-fab color="primary" [ngClass]="{'bg-success': isAudioEnabled, 'bg-danger': !isAudioEnabled}" (click)="toggleAudio()" matTooltip="{{ isAudioEnabled ? 'Mute Audio' : 'Unmute Audio' }}">
+    <button
+      mat-fab
+      color="primary"
+      [ngClass]="{ 'bg-success': isAudioEnabled, 'bg-danger': !isAudioEnabled }"
+      (click)="toggleAudio()"
+      matTooltip="{{ isAudioEnabled ? 'Mute Audio' : 'Unmute Audio' }}"
+    >
       <mat-icon>{{ isAudioEnabled ? 'mic' : 'mic_off' }}</mat-icon>
     </button>
-    <button mat-fab color="primary" [ngClass]="{'bg-success': isVideoEnabled, 'bg-danger': !isVideoEnabled}" (click)="toggleVideo()" matTooltip="{{ isVideoEnabled ? 'Turn Off Video' : 'Turn On Video' }}">
+
+    <button
+      mat-fab
+      color="primary"
+      [ngClass]="{ 'bg-success': isVideoEnabled, 'bg-danger': !isVideoEnabled }"
+      (click)="toggleVideo()"
+      matTooltip="{{ isVideoEnabled ? 'Turn Off Video' : 'Turn On Video' }}"
+    >
       <mat-icon>{{ isVideoEnabled ? 'videocam' : 'videocam_off' }}</mat-icon>
     </button>
-    <button mat-fab color="primary" [ngClass]="{'bg-success': isScreenSharing, 'bg-secondary': !isScreenSharing}" (click)="toggleScreenShare()" matTooltip="{{ isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share' }}">
+
+    <button
+      mat-fab
+      color="primary"
+      [ngClass]="{ 'bg-success': isScreenSharing, 'bg-secondary': !isScreenSharing }"
+      (click)="toggleScreenShare()"
+      matTooltip="{{ isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share' }}"
+    >
       <mat-icon>{{ isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
     </button>
+
     <button mat-fab color="warn" (click)="leaveCall()" matTooltip="Leave Call">
       <mat-icon>call_end</mat-icon>
     </button>
@@ -69,4 +114,5 @@
       </mat-card-content>
     </mat-card>
   </div>
-</div> 
+
+</div>
