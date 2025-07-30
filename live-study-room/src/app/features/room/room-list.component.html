@@ -18,7 +18,7 @@
           <mat-card-content>
             <form [formGroup]="createForm" (ngSubmit)="onCreateRoom()">
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Subject/Topic</mat-label>
+                <!-- <mat-label>Subject/Topic</mat-label> -->
                 <input matInput formControlName="subject" placeholder="e.g., Mathematics, Programming, etc." />
                 <mat-icon matSuffix>school</mat-icon>
               </mat-form-field>
@@ -41,7 +41,7 @@
           <mat-card-content>
             <form [formGroup]="joinForm" (ngSubmit)="onJoinRoom()">
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Room Code</mat-label>
+                <!-- <mat-label>Room Code</mat-label> -->
                 <input matInput formControlName="code" placeholder="Enter 6-digit code" maxlength="6" />
                 <mat-icon matSuffix>meeting_room</mat-icon>
               </mat-form-field>
