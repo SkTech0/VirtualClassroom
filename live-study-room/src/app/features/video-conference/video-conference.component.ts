@@ -4,7 +4,9 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
-  AfterViewInit
+  AfterViewInit,
+  ChangeDetectorRef,
+  AfterViewChecked
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -32,7 +34,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
   templateUrl: './video-conference.component.html',
   styleUrls: ['./video-conference.component.css']
 })
-export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewInit {
+export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewInit, AfterViewChecked {
   @ViewChild('localVideo', { static: false }) localVideoRef!: ElementRef<HTMLVideoElement>;
   @ViewChild('remoteVideosContainer', { static: false }) remoteVideosContainer!: ElementRef<HTMLDivElement>;
 
@@ -46,11 +48,13 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
   private destroy$ = new Subject<void>();
   private videoElements = new Map<string, HTMLVideoElement>();
+  private lastParticipantCount = 0;
 
   constructor(
     private route: ActivatedRoute,
     private videoService: VideoService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {
     this.callState$ = this.videoService.callState$;
   }
@@ -63,7 +67,12 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
       this.isAudioEnabled = state.isAudioEnabled;
       this.isScreenSharing = state.isScreenSharing;
       this.isInCall = state.isInCall;
-      this.updateVideoElements();
+      
+      // Trigger change detection when participants change
+      if (this.participants.length !== this.lastParticipantCount) {
+        this.lastParticipantCount = this.participants.length;
+        this.cdr.detectChanges();
+      }
     });
 
     await this.initializeVideo(this.roomCode);
@@ -73,17 +82,32 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     this.updateVideoElements();
   }
 
+  ngAfterViewChecked() {
+    // Update video elements when view is checked
+    this.updateVideoElements();
+  }
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Clean up video elements
+    this.videoElements.forEach(element => {
+      if (element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+    });
+    this.videoElements.clear();
+    
+    // Leave call
     this.videoService.leaveCall();
   }
 
   private async initializeVideo(roomCode: string) {
     try {
-      const success = await this.videoService.initializeVideo();
+      const success = await this.videoService.initializeVideo(roomCode);
       if (!success) {
-        this.snackBar.open('Failed to access camera/microphone.', 'Close', { duration: 7000 });
+        this.snackBar.open('Failed to access camera/microphone. Please check permissions.', 'Close', { duration: 7000 });
         console.error('getUserMedia failed for this participant.');
       } else {
         console.log('Media initialized and joined room.');
@@ -95,15 +119,28 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   private updateVideoElements() {
-    setTimeout(() => {
-      this.participants.forEach(participant => {
-        if (participant.isLocal) {
-          this.updateLocalVideo(participant);
-        } else {
-          this.updateRemoteVideo(participant);
+    if (!this.remoteVideosContainer?.nativeElement) return;
+
+    const currentIds = new Set(this.participants.map(p => p.id));
+    
+    // Remove stale video elements
+    this.videoElements.forEach((element, id) => {
+      if (!currentIds.has(id)) {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
         }
-      });
-    }, 100);
+        this.videoElements.delete(id);
+      }
+    });
+
+    // Update existing and add new video elements
+    this.participants.forEach(participant => {
+      if (participant.isLocal) {
+        this.updateLocalVideo(participant);
+      } else {
+        this.updateRemoteVideo(participant);
+      }
+    });
   }
 
   private updateLocalVideo(participant: VideoPeer) {
@@ -170,9 +207,13 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     }
   }
 
-  leaveCall() {
-    this.videoService.leaveCall();
-    this.snackBar.open('Left the call.', 'Close', { duration: 2000 });
+  async leaveCall() {
+    try {
+      await this.videoService.leaveCall();
+      this.snackBar.open('Left the call.', 'Close', { duration: 2000 });
+    } catch (err) {
+      this.snackBar.open('Error leaving call: ' + String(err), 'Close', { duration: 4000 });
+    }
   }
 
   getParticipantCount(): number {
@@ -188,7 +229,12 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   copyRoomCode() {
-    navigator.clipboard.writeText(this.roomCode);
-    this.snackBar.open('Room code copied!', 'Close', { duration: 2000 });
+    try {
+      navigator.clipboard.writeText(this.roomCode);
+      this.snackBar.open('Room code copied!', 'Close', { duration: 2000 });
+    } catch (err) {
+      console.error('Failed to copy room code:', err);
+      this.snackBar.open('Failed to copy room code', 'Close', { duration: 2000 });
+    }
   }
 }

@@ -92,6 +92,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IPomodoroService, PomodoroService>();
+builder.Services.AddScoped<IVideoSessionService, VideoSessionService>();
 
 // SignalR
 builder.Services.AddSignalR();

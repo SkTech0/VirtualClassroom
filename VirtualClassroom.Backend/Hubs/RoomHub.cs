@@ -2,12 +2,21 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using System;
+using VirtualClassroom.Backend.Services;
+using VirtualClassroom.Backend.Services.Interfaces;
 
 namespace VirtualClassroom.Backend.Hubs
 {
     [Authorize]
     public class RoomHub : Hub
     {
+        private readonly IVideoSessionService _videoSessionService;
+
+        public RoomHub(IVideoSessionService videoSessionService)
+        {
+            _videoSessionService = videoSessionService;
+        }
+
         // Timer sync methods
         public async Task StartTimer(string roomCode, int durationSeconds)
         {
@@ -63,15 +72,34 @@ namespace VirtualClassroom.Backend.Hubs
         // Video Conferencing Methods
         public async Task JoinVideoCall(string roomCode)
         {
+            // Add to video call group
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+            
             var userId = Context.UserIdentifier;
             var username = Context.User?.Identity?.Name ?? "Unknown User";
+            
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                // Track video session in database
+                await _videoSessionService.JoinVideoSessionAsync(roomCode, userGuid, username, Context.ConnectionId);
+            }
             
             await Clients.Group(roomCode).SendAsync("UserJoinedVideo", userId, username);
         }
 
         public async Task LeaveVideoCall(string roomCode)
         {
+            // Remove from video call group
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+            
             var userId = Context.UserIdentifier;
+            
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                // Update video session in database
+                await _videoSessionService.LeaveVideoSessionAsync(roomCode, userGuid);
+            }
+            
             await Clients.Group(roomCode).SendAsync("UserLeftVideo", userId);
         }
 
@@ -96,20 +124,54 @@ namespace VirtualClassroom.Backend.Hubs
         public async Task ToggleVideo(string roomCode, bool isVideoEnabled)
         {
             var userId = Context.UserIdentifier;
+            
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                // Update video state in database
+                await _videoSessionService.UpdateVideoStateAsync(roomCode, userGuid, isVideoEnabled, true);
+            }
+            
             await Clients.Group(roomCode).SendAsync("VideoToggle", new { userId, isVideoEnabled });
         }
 
         public async Task ToggleAudio(string roomCode, bool isAudioEnabled)
         {
             var userId = Context.UserIdentifier;
+            
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                // Update audio state in database
+                await _videoSessionService.UpdateVideoStateAsync(roomCode, userGuid, true, isAudioEnabled);
+            }
+            
             await Clients.Group(roomCode).SendAsync("AudioToggle", new { userId, isAudioEnabled });
         }
 
         // Group management
         public override async Task OnConnectedAsync()
         {
-            // Optionally: Add user to groups based on query string or context
             await base.OnConnectedAsync();
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            // Handle disconnection - notify others that user left
+            var userId = Context.UserIdentifier;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                // Notify all groups this user was in that they left
+                // Note: In a production app, you'd track which groups the user was in
+                await Clients.All.SendAsync("UserDisconnected", userId);
+                
+                // Clean up any active video sessions
+                if (Guid.TryParse(userId, out var userGuid))
+                {
+                    // This would need to be enhanced to track which rooms the user was in
+                    // For now, we'll rely on explicit LeaveVideoCall calls
+                }
+            }
+            
+            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task JoinRoomGroup(string roomCode)

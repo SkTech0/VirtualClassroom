@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using VirtualClassroom.Backend.DTOs.Room;
 using VirtualClassroom.Backend.Services.Interfaces;
+using VirtualClassroom.Backend.Services;
 using Microsoft.AspNetCore.SignalR;
 using VirtualClassroom.Backend.Hubs;
 
@@ -15,11 +16,13 @@ namespace VirtualClassroom.Backend.Controllers
     public class RoomController : ControllerBase
     {
         private readonly IRoomService _roomService;
+        private readonly IVideoSessionService _videoSessionService;
         private readonly IHubContext<RoomHub> _hubContext;
 
-        public RoomController(IRoomService roomService, IHubContext<RoomHub> hubContext)
+        public RoomController(IRoomService roomService, IVideoSessionService videoSessionService, IHubContext<RoomHub> hubContext)
         {
             _roomService = roomService;
+            _videoSessionService = videoSessionService;
             _hubContext = hubContext;
         }
 
@@ -76,31 +79,14 @@ namespace VirtualClassroom.Backend.Controllers
             return Ok();
         }
 
-        // Video Conferencing Endpoints
-        [HttpPost("{code}/video/join")]
-        public async Task<IActionResult> JoinVideoCall(string code)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var username = User.Identity?.Name ?? "Unknown User";
-            
-            await _hubContext.Clients.Group(code).SendAsync("UserJoinedVideo", userId, username);
-            return Ok();
-        }
-
-        [HttpPost("{code}/video/leave")]
-        public async Task<IActionResult> LeaveVideoCall(string code)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            await _hubContext.Clients.Group(code).SendAsync("UserLeftVideo", userId);
-            return Ok();
-        }
+        // Note: Video conferencing functionality is handled through SignalR Hub methods
+        // The following endpoints are kept for REST-based clients (mobile apps, etc.)
+        // but the primary video communication happens through SignalR connections
 
         [HttpGet("{code}/video/participants")]
         public async Task<IActionResult> GetVideoParticipants(string code)
         {
-            // This would typically track active video participants
-            // For now, return the same participants as the room
-            var participants = await _roomService.GetParticipantsAsync(code);
+            var participants = await _videoSessionService.GetActiveVideoParticipantsAsync(code);
             return Ok(participants);
         }
     }

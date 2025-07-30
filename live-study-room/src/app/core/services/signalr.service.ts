@@ -6,28 +6,85 @@ import { BehaviorSubject } from 'rxjs';
 export class SignalRService {
   private hubConnection: signalR.HubConnection | null = null;
   private connectionState = new BehaviorSubject<boolean>(false);
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 2000; // 2 seconds
+  private currentHubUrl = '';
+  private currentOptions: signalR.IHttpConnectionOptions | undefined;
+
   connectionState$ = this.connectionState.asObservable();
 
   /**
    * Start a new SignalR connection with optional auth.
    */
   startConnection(hubUrl: string, options?: signalR.IHttpConnectionOptions): void {
+    this.currentHubUrl = hubUrl;
+    this.currentOptions = options;
+    
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, options ?? {})
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000]) // Exponential backoff
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    this.hubConnection
-      .start()
-      .then(() => {
-        console.log('✅ SignalR connected');
-        this.connectionState.next(true);
-      })
-      .catch(err => {
-        console.error('❌ SignalR connection error:', err);
-        this.connectionState.next(false);
-      });
+    this.setupConnectionHandlers();
+    this.connect();
+  }
+
+  private setupConnectionHandlers() {
+    if (!this.hubConnection) return;
+
+    this.hubConnection.onreconnecting((error) => {
+      console.log('🔄 SignalR reconnecting...', error);
+      this.connectionState.next(false);
+    });
+
+    this.hubConnection.onreconnected((connectionId) => {
+      console.log('✅ SignalR reconnected with connection ID:', connectionId);
+      this.connectionState.next(true);
+      this.reconnectAttempts = 0;
+    });
+
+    this.hubConnection.onclose((error) => {
+      console.log('❌ SignalR connection closed:', error);
+      this.connectionState.next(false);
+      
+      // Attempt manual reconnection if not at max attempts
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.attemptReconnect();
+      }
+    });
+  }
+
+  private async connect() {
+    if (!this.hubConnection) return;
+
+    try {
+      await this.hubConnection.start();
+      console.log('✅ SignalR connected');
+      this.connectionState.next(true);
+      this.reconnectAttempts = 0;
+    } catch (err) {
+      console.error('❌ SignalR connection error:', err);
+      this.connectionState.next(false);
+      
+      // Attempt manual reconnection
+      this.attemptReconnect();
+    }
+  }
+
+  private async attemptReconnect() {
+    this.reconnectAttempts++;
+    console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+    
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('❌ Max reconnection attempts reached');
+      return;
+    }
+
+    setTimeout(() => {
+      this.connect();
+    }, this.reconnectDelay * this.reconnectAttempts);
   }
 
   /**
@@ -37,6 +94,7 @@ export class SignalRService {
     if (this.hubConnection) {
       this.hubConnection.stop();
       this.connectionState.next(false);
+      this.reconnectAttempts = 0;
     }
   }
 
@@ -58,16 +116,40 @@ export class SignalRService {
    * Safely invoke a method if connection is active.
    */
   async invoke(method: string, ...args: any[]) {
-  if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
-    throw new Error('SignalR connection is not in Connected state');
+    if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error('SignalR connection is not in Connected state');
+    }
+
+    try {
+      return await this.hubConnection.invoke(method, ...args);
+    } catch (err) {
+      console.error(`❌ Failed to invoke '${method}':`, err);
+      throw err;
+    }
   }
 
-  try {
-    return await this.hubConnection.invoke(method, ...args);
-  } catch (err) {
-    console.error(`❌ Failed to invoke '${method}':`, err);
-    throw err;
+  /**
+   * Get current connection state
+   */
+  isConnected(): boolean {
+    return this.hubConnection?.state === signalR.HubConnectionState.Connected;
   }
-}
 
+  /**
+   * Get connection state as string
+   */
+  getConnectionState(): string {
+    return this.hubConnection?.state || 'Disconnected';
+  }
+
+  /**
+   * Force reconnection
+   */
+  async forceReconnect(): Promise<void> {
+    if (this.hubConnection) {
+      await this.hubConnection.stop();
+      this.reconnectAttempts = 0;
+      this.connect();
+    }
+  }
 }
