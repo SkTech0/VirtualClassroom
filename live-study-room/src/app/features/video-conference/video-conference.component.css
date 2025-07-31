@@ -1,41 +1,154 @@
 /* Minimal custom CSS for video conference component. Use Bootstrap/Material for layout and spacing. */
 
+ 
+
 .video-conference-container {
+
   min-height: 100vh;
+
   background: #f5f5f5;
+
 }
+
+ 
 
 .local-video, .remote-video {
+
   border-radius: 8px;
+
   overflow: hidden;
+
   background: #000;
+
 }
+
+ 
 
 .video-overlay {
+
   position: absolute;
+
   bottom: 0;
+
   left: 0;
+
   right: 0;
+
   padding: 0.5rem;
+
   background: linear-gradient(transparent, rgba(0,0,0,0.7));
+
   color: #fff;
+
   font-size: 0.9rem;
+
 }
+
+ 
 
 .status-icon {
+
   font-size: 1.2rem;
+
   opacity: 0.8;
+
 }
+
+ 
 
 .connection-status {
+
   position: absolute;
+
   top: 50%;
+
   left: 50%;
+
   transform: translate(-50%, -50%);
+
   z-index: 10;
+
 }
 
+ 
+
 /* Hide placeholder when not needed */
+
 .video-placeholder.hidden {
+
   display: none;
-} 
+
+}
+
+ 
+
+/* Drawer styles */
+
+.video-conference-drawer-container {
+
+  height: 100vh;
+
+}
+
+ 
+
+.video-conference-drawer {
+
+  width: 320px;
+
+  padding: 1rem 0.5rem;
+
+  background: #fafbfc;
+
+  border-left: 1px solid #e0e0e0;
+
+}
+
+ 
+
+.drawer-title {
+
+  margin: 0 0 1rem 1rem;
+
+  font-weight: 600;
+
+  font-size: 1.1rem;
+
+}
+
+ 
+
+.mat-list-item {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 0.5rem;
+
+}
+
+ 
+
+.ml-auto {
+
+  margin-left: auto;
+
+}
+
+ 
+
+/* Ensure drawer overlays content on small screens */
+
+@media (max-width: 900px) {
+
+  .video-conference-drawer {
+
+    width: 80vw;
+
+    min-width: 200px;
+
+  }
+
+}
+
