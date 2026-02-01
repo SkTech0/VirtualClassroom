@@ -35,7 +35,24 @@ export class ApiService {
   }
 
   private handleError(error: HttpErrorResponse) {
-    // Customize error handling as needed
     return throwError(() => error);
+  }
+
+  /**
+   * Extract user-facing message from API error response.
+   * Supports structured responses: message, detail, error, and validation errors.
+   */
+  static getApiErrorMessage(err: HttpErrorResponse, fallback = 'An error occurred'): string {
+    const body = err?.error;
+    if (!body || typeof body !== 'object') return fallback;
+    if (typeof body.message === 'string' && body.message.trim()) return body.message;
+    if (typeof body.detail === 'string' && body.detail.trim()) return body.detail;
+    if (typeof body.error === 'string' && body.error.trim()) return body.error;
+    if (Array.isArray(body.errors) && body.errors.length > 0) {
+      const first = body.errors[0];
+      const msg = first?.errorMessage ?? first?.ErrorMessage ?? first?.message;
+      if (typeof msg === 'string') return msg;
+    }
+    return fallback;
   }
 } 

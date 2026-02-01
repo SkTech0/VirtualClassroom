@@ -5,6 +5,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ApiService } from '../../core/services/api.service';
+import { API_ENDPOINTS } from '../../core/constants/api-endpoints';
 
 import { AuthService } from '../../core/services/auth.service';
 
@@ -213,7 +214,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   loadRoom(code: string) {
 
-    this.api.get<Room>(`room/${code}`).subscribe({
+    this.api.get<Room>(API_ENDPOINTS.rooms.byCode(code)).subscribe({
 
       next: room => {
 
@@ -225,9 +226,9 @@ export class RoomComponent implements OnInit, OnDestroy {
 
       },
 
-      error: () => {
+      error: err => {
 
-        this.snackBar.open('Failed to load room', 'Close', { duration: 3000 });
+        this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to load room'), 'Close', { duration: 3000 });
 
         this.router.navigate(['/room']);
 
@@ -291,7 +292,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
     if (!this.room) return;
 
-    this.api.get<Participant[]>(`room/${this.room.code}/participants`).subscribe({
+    this.api.get<Participant[]>(API_ENDPOINTS.rooms.participants(this.room.code)).subscribe({
 
       next: participants => {
 
@@ -509,7 +510,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
     if (this.room) {
 
-      this.api.post('room/leave', { code: this.room.code }).subscribe({
+      this.api.post(API_ENDPOINTS.rooms.leave, { roomCode: this.room.code }).subscribe({
 
         next: () => {
 
@@ -519,9 +520,9 @@ export class RoomComponent implements OnInit, OnDestroy {
 
         },
 
-        error: () => {
+        error: err => {
 
-          this.snackBar.open('Failed to leave room', 'Close', { duration: 2000 });
+          this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to leave room'), 'Close', { duration: 2000 });
 
         }
 

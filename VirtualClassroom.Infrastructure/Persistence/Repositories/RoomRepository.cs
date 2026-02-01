@@ -35,4 +35,12 @@ public sealed class RoomRepository(ApplicationDbContext db) : IRoomRepository
     {
         return await db.Rooms.AnyAsync(r => r.Code == code, ct);
     }
+
+    public async Task<IReadOnlyList<Room>> GetByIdsAsync(IReadOnlyList<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0) return Array.Empty<Room>();
+        return await db.Rooms.AsNoTracking()
+            .Where(r => ids.Contains(r.Id))
+            .ToListAsync(ct);
+    }
 }

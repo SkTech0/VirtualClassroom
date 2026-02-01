@@ -65,9 +65,8 @@ export class LoginComponent {
       next: () => {
         this.loading = false;
         this.snackBar.open('Welcome back!', 'Close', { duration: 2000 });
-        this.router.navigate(['/room']).then(() => {
-          this.loading = false;
-        });
+        // Defer navigation so token is committed to storage before room list loads
+        setTimeout(() => this.router.navigate(['/room']), 0);
       },
       error: err => {
         this.loading = false;

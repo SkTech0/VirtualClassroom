@@ -8,8 +8,12 @@ public sealed class GetRoomParticipantsQueryHandler(IRoomParticipantRepository p
 {
     public async Task<IReadOnlyList<ParticipantDto>> Handle(GetRoomParticipantsQuery request, CancellationToken ct)
     {
-        var participants = await participantRepository.GetActiveParticipantsAsync(request.RoomCode, ct);
+        var roomCode = NormalizeRoomCode(request.RoomCode);
+        var participants = await participantRepository.GetActiveParticipantsAsync(roomCode, ct);
         return participants.Select(p => new ParticipantDto(
             p.UserId, p.Username, p.Email, p.Status, p.IsHost)).ToList();
     }
+
+    private static string NormalizeRoomCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
 }

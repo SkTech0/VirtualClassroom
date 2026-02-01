@@ -10,7 +10,8 @@ public sealed class GetRoomByCodeQueryHandler(
 {
     public async Task<RoomResponse> Handle(GetRoomByCodeQuery request, CancellationToken ct)
     {
-        var room = await roomRepository.GetByCodeAsync(request.Code, ct);
+        var code = NormalizeRoomCode(request.Code);
+        var room = await roomRepository.GetByCodeAsync(code, ct);
         if (room is null)
             throw new InvalidOperationException("Room not found");
 
@@ -23,4 +24,7 @@ public sealed class GetRoomByCodeQueryHandler(
             room.IsActive,
             room.CreatedAt);
     }
+
+    private static string NormalizeRoomCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
 }

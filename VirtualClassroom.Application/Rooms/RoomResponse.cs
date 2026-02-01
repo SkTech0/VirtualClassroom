@@ -7,4 +7,5 @@ public record RoomResponse(
     string HostUsername,
     bool IsActive,
     DateTime CreatedAt,
-    Guid? SessionId = null);
+    Guid? SessionId = null,
+    int? ParticipantCount = null);

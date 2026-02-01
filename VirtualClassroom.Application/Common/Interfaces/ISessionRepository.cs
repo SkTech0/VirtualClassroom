@@ -9,4 +9,5 @@ public interface ISessionRepository
     Task<Session> CreateAsync(Session session, CancellationToken ct = default);
     Task UpdateAsync(Session session, CancellationToken ct = default);
     Task<IReadOnlyList<Session>> GetActiveByRoomAsync(Guid roomId, CancellationToken ct = default);
+    Task<IReadOnlyList<Session>> GetActiveByUserAsync(Guid userId, CancellationToken ct = default);
 }

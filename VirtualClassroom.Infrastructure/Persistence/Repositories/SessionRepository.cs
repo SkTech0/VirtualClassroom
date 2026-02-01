@@ -37,4 +37,11 @@ public sealed class SessionRepository(ApplicationDbContext db) : ISessionReposit
             .Where(s => s.RoomId == roomId && s.LeftAt == null)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<Session>> GetActiveByUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await db.Sessions
+            .Where(s => s.UserId == userId && s.LeftAt == null)
+            .ToListAsync(ct);
+    }
 }

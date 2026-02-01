@@ -12,11 +12,12 @@ public sealed class JoinRoomCommandHandler(
 {
     public async Task<RoomResponse> Handle(JoinRoomCommand request, CancellationToken ct)
     {
+        var code = NormalizeRoomCode(request.Code);
         var userInfo = await identityService.GetUserInfoAsync(request.UserId);
         if (userInfo is null)
             throw new InvalidOperationException("User not found");
 
-        var room = await roomRepository.GetByCodeActiveAsync(request.Code, ct);
+        var room = await roomRepository.GetByCodeActiveAsync(code, ct);
         if (room is null)
             throw new InvalidOperationException("Room not found or inactive");
 
@@ -45,4 +46,7 @@ public sealed class JoinRoomCommandHandler(
             room.CreatedAt,
             session.Id);
     }
+
+    private static string NormalizeRoomCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
 }

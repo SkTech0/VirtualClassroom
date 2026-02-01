@@ -45,7 +45,11 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -210,18 +214,18 @@ app.Use(async (ctx, next) =>
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             var errors = validationEx.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-            await ctx.Response.WriteAsJsonAsync(new { errors, message = "Validation failed" });
+            await ctx.Response.WriteAsJsonAsync(new { type = "ValidationError", status = 400, title = "Validation Failed", message = "Validation failed", errors });
         }
         else if (err is InvalidOperationException opEx)
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-            await ctx.Response.WriteAsJsonAsync(new { message = opEx.Message });
+            await ctx.Response.WriteAsJsonAsync(new { type = "BadRequest", status = 400, title = "Bad Request", message = opEx.Message });
         }
         else
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             var msg = app.Environment.IsDevelopment() ? err.ToString() : "An error occurred";
-            await ctx.Response.WriteAsJsonAsync(new { message = "An error occurred", detail = msg });
+            await ctx.Response.WriteAsJsonAsync(new { type = "InternalServerError", status = 500, title = "Internal Server Error", message = "An error occurred", detail = msg });
         }
     }
 });

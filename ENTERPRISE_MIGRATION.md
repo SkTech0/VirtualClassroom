@@ -61,6 +61,7 @@ VirtualClassroom.sln
 | POST | /api/v1/rooms/create | Create room |
 | POST | /api/v1/rooms/join | Join room |
 | POST | /api/v1/rooms/leave | Leave room |
+| GET | /api/v1/rooms/mine | List current user's rooms (active sessions) |
 | GET | /api/v1/rooms/{code} | Get room by code |
 | GET | /api/v1/rooms/{code}/participants | Get participants |
 | POST | /api/v1/pomodoro/start | Start Pomodoro |

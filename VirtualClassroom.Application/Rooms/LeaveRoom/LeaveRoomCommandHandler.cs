@@ -10,7 +10,8 @@ public sealed class LeaveRoomCommandHandler(
 {
     public async Task<Unit> Handle(LeaveRoomCommand request, CancellationToken ct)
     {
-        var room = await roomRepository.GetByCodeActiveAsync(request.RoomCode, ct);
+        var roomCode = NormalizeRoomCode(request.RoomCode);
+        var room = await roomRepository.GetByCodeActiveAsync(roomCode, ct);
         if (room is null)
             throw new InvalidOperationException("Room not found or inactive");
 
@@ -24,4 +25,7 @@ public sealed class LeaveRoomCommandHandler(
         await sessionRepository.UpdateAsync(session, ct);
         return Unit.Value;
     }
+
+    private static string NormalizeRoomCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
 }

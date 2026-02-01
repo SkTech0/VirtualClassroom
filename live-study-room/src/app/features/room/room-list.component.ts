@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { API_ENDPOINTS } from '../../core/constants/api-endpoints';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -66,7 +67,7 @@ export class RoomListComponent implements OnInit {
       code: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(6)]] 
     });
     this.createForm = this.fb.group({ 
-      subject: ['', Validators.required] 
+      subject: ['', [Validators.required, Validators.maxLength(200)]] 
     });
   }
 
@@ -76,30 +77,25 @@ export class RoomListComponent implements OnInit {
 
   loadRooms() {
     this.loading = true;
-    // For now, we'll create some mock data since the API might not have this endpoint
-    setTimeout(() => {
-      this.rooms = [
-        {
-          id: '1',
-          code: 'ABC123',
-          subject: 'Mathematics',
-          hostUsername: 'John Doe',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          participantCount: 5
-        },
-        {
-          id: '2',
-          code: 'DEF456',
-          subject: 'Programming',
-          hostUsername: 'Jane Smith',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          participantCount: 3
-        }
-      ];
-      this.loading = false;
-    }, 1000);
+    this.api.get<Room[]>(API_ENDPOINTS.rooms.mine).subscribe({
+      next: rooms => {
+        this.rooms = (rooms ?? []).map(r => ({
+          id: r.id,
+          code: r.code,
+          subject: r.subject ?? '',
+          hostUsername: r.hostUsername ?? 'Host',
+          isActive: r.isActive,
+          createdAt: r.createdAt,
+          participantCount: r.participantCount ?? 0
+        }));
+        this.loading = false;
+      },
+      error: err => {
+        this.loading = false;
+        this.rooms = [];
+        this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to load rooms'), 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onJoinRoom() {
@@ -115,7 +111,7 @@ export class RoomListComponent implements OnInit {
     
     const code = codeValue.toUpperCase();
     
-    this.api.post<any>('room/join', { code }).subscribe({
+    this.api.post<any>(API_ENDPOINTS.rooms.join, { code }).subscribe({
       next: () => {
         this.joining = false;
         this.snackBar.open('Successfully joined room!', 'Close', { duration: 3000 });
@@ -123,7 +119,7 @@ export class RoomListComponent implements OnInit {
       },
       error: err => {
         this.joining = false;
-        this.snackBar.open(err.error?.error || 'Failed to join room', 'Close', { duration: 3000 });
+        this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to join room'), 'Close', { duration: 3000 });
       }
     });
   }
@@ -132,17 +128,25 @@ export class RoomListComponent implements OnInit {
     if (this.createForm.invalid) return;
     this.creating = true;
     
-    this.api.post<Room>('room/create', { subject: this.createForm.value.subject }).subscribe({
+    this.api.post<Room>(API_ENDPOINTS.rooms.create, { subject: this.createForm.value.subject }).subscribe({
       next: room => {
         this.creating = false;
         this.snackBar.open('Room created successfully!', 'Close', { duration: 3000 });
-        this.rooms.unshift(room);
+        this.rooms.unshift({
+          id: room.id,
+          code: room.code,
+          subject: room.subject ?? '',
+          hostUsername: room.hostUsername ?? 'Host',
+          isActive: room.isActive,
+          createdAt: room.createdAt,
+          participantCount: room.participantCount ?? 0
+        });
         this.createForm.reset();
         this.router.navigate(['/room', room.code]);
       },
       error: err => {
         this.creating = false;
-        this.snackBar.open(err.error?.error || 'Failed to create room', 'Close', { duration: 3000 });
+        this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to create room'), 'Close', { duration: 3000 });
       }
     });
   }
@@ -152,13 +156,13 @@ export class RoomListComponent implements OnInit {
   }
 
   leaveRoom(code: string) {
-    this.api.post('room/leave', { code }).subscribe({
+    this.api.post(API_ENDPOINTS.rooms.leave, { roomCode: code }).subscribe({
       next: () => {
         this.rooms = this.rooms.filter(room => room.code !== code);
         this.snackBar.open('Left room successfully', 'Close', { duration: 3000 });
       },
       error: err => {
-        this.snackBar.open(err.error?.error || 'Failed to leave room', 'Close', { duration: 3000 });
+        this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to leave room'), 'Close', { duration: 3000 });
       }
     });
   }

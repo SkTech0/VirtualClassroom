@@ -53,14 +53,21 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
-    if (!res || !res.accessToken || !res.username || !res.email) {
+    const raw = res as unknown as Record<string, unknown>;
+    const accessToken = (res?.accessToken ?? raw?.['AccessToken']) as string | undefined;
+    const username = (res?.username ?? raw?.['Username']) as string | undefined;
+    const email = (res?.email ?? raw?.['Email']) as string | undefined;
+    const refreshToken = (res?.refreshToken ?? raw?.['RefreshToken']) as string | undefined;
+    const role = (res?.role ?? raw?.['Role']) as string | undefined;
+
+    if (!res || !accessToken || !username || !email) {
       console.error('Invalid response data. Cannot set session.');
       return;
     }
 
-    localStorage.setItem('token', res.accessToken);
-    localStorage.setItem('refreshToken', res.refreshToken || '');
-    const user = { username: res.username, email: res.email, role: res.role || 'Student' };
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('refreshToken', refreshToken ?? '');
+    const user = { username, email, role: (role as string) || 'Student' };
     try {
       localStorage.setItem('user', JSON.stringify(user));
     } catch (error) {

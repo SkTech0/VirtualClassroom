@@ -9,6 +9,7 @@ using VirtualClassroom.Application.Rooms;
 using VirtualClassroom.Application.Rooms.CreateRoom;
 using VirtualClassroom.Application.Rooms.GetParticipants;
 using VirtualClassroom.Application.Rooms.GetRoom;
+using VirtualClassroom.Application.Rooms.GetUserRooms;
 using VirtualClassroom.Application.Rooms.JoinRoom;
 using VirtualClassroom.Application.Rooms.LeaveRoom;
 
@@ -41,9 +42,18 @@ public class RoomsController(IMediator mediator, IHubContext<RoomHub> hubContext
     [HttpPost("leave")]
     public async Task<IActionResult> Leave([FromBody] LeaveRoomRequest request, CancellationToken ct)
     {
-        var command = new LeaveRoomCommand(UserId, request.RoomCode);
+        var roomCode = request.RoomCode ?? request.Code ?? string.Empty;
+        var command = new LeaveRoomCommand(UserId, roomCode);
         await mediator.Send(command, ct);
         return NoContent();
+    }
+
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMine(CancellationToken ct)
+    {
+        var query = new GetUserRoomsQuery(UserId);
+        var response = await mediator.Send(query, ct);
+        return Ok(response);
     }
 
     [HttpGet("{code}")]
@@ -79,6 +89,6 @@ public class RoomsController(IMediator mediator, IHubContext<RoomHub> hubContext
 
 public record CreateRoomRequest(string Subject);
 public record JoinRoomRequest(string Code);
-public record LeaveRoomRequest(string RoomCode);
+public record LeaveRoomRequest(string? RoomCode = null, string? Code = null);
 public record KnockKnockRequest(string RoomCode, string TargetUserId);
 public record ReminderRequest(string RoomCode, string Message);
