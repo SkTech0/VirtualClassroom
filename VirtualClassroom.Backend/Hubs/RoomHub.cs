@@ -66,7 +66,8 @@ public class RoomHub : Hub
 
     public async Task JoinVideoCall(string roomCode)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+        var code = NormalizeRoomCode(roomCode);
+        await Groups.AddToGroupAsync(Context.ConnectionId, code);
 
         var userId = Context.UserIdentifier;
         var username = Context.User?.Identity?.Name ?? "Unknown User";
@@ -75,7 +76,7 @@ public class RoomHub : Hub
         {
             var session = new Domain.Entities.VideoSession
             {
-                RoomCode = roomCode,
+                RoomCode = code,
                 UserId = userGuid,
                 Username = username,
                 ConnectionId = Context.ConnectionId!
@@ -83,7 +84,7 @@ public class RoomHub : Hub
             await _videoSessionRepository.JoinAsync(session);
         }
 
-        var videoSessions = await _videoSessionRepository.GetActiveByRoomAsync(roomCode);
+        var videoSessions = await _videoSessionRepository.GetActiveByRoomAsync(code);
         var videoParticipants = videoSessions.Select(v => new
         {
             userId = v.UserId.ToString(),
@@ -93,26 +94,27 @@ public class RoomHub : Hub
         }).ToList();
 
         await Clients.Caller.SendAsync("ExistingVideoParticipants", videoParticipants);
-        await Clients.Group(roomCode).SendAsync("UserJoinedVideo", userId, username);
+        await Clients.Group(code).SendAsync("UserJoinedVideo", userId, username);
     }
 
     public async Task LeaveVideoCall(string roomCode)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+        var code = NormalizeRoomCode(roomCode);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, code);
 
         var userId = Context.UserIdentifier;
         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
         {
-            await _videoSessionRepository.LeaveAsync(roomCode, userGuid);
+            await _videoSessionRepository.LeaveAsync(code, userGuid);
         }
 
-        await Clients.Group(roomCode).SendAsync("UserLeftVideo", userId);
+        await Clients.Group(code).SendAsync("UserLeftVideo", userId);
 
-        var videoActive = await GetVideoActiveCount(roomCode);
+        var videoActive = await GetVideoActiveCount(code);
         if (videoActive == 0)
         {
-            await _roomCloser.CloseRoomAsync(roomCode);
-            await Clients.Group(roomCode).SendAsync("RoomClosed");
+            await _roomCloser.CloseRoomAsync(code);
+            await Clients.Group(code).SendAsync("RoomClosed");
         }
     }
 
@@ -124,41 +126,49 @@ public class RoomHub : Hub
 
     public async Task SendVideoOffer(string roomCode, string targetUserId, object offer)
     {
+        var code = NormalizeRoomCode(roomCode);
         var fromUserId = Context.UserIdentifier;
-        await Clients.Group(roomCode).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
+        await Clients.Group(code).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
     }
 
     public async Task SendVideoAnswer(string roomCode, string targetUserId, object answer)
     {
+        var code = NormalizeRoomCode(roomCode);
         var fromUserId = Context.UserIdentifier;
-        await Clients.Group(roomCode).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
+        await Clients.Group(code).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
     }
 
     public async Task SendVideoIceCandidate(string roomCode, string targetUserId, object candidate)
     {
+        var code = NormalizeRoomCode(roomCode);
         var fromUserId = Context.UserIdentifier;
-        await Clients.Group(roomCode).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
+        await Clients.Group(code).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
     }
 
     public async Task ToggleVideo(string roomCode, bool isVideoEnabled)
     {
+        var code = NormalizeRoomCode(roomCode);
         var userId = Context.UserIdentifier;
         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
         {
-            await _videoSessionRepository.UpdateStateAsync(roomCode, userGuid, isVideoEnabled, true);
+            await _videoSessionRepository.UpdateStateAsync(code, userGuid, isVideoEnabled, true);
         }
-        await Clients.Group(roomCode).SendAsync("VideoToggle", new { userId, isVideoEnabled });
+        await Clients.Group(code).SendAsync("VideoToggle", new { userId, isVideoEnabled });
     }
 
     public async Task ToggleAudio(string roomCode, bool isAudioEnabled)
     {
+        var code = NormalizeRoomCode(roomCode);
         var userId = Context.UserIdentifier;
         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
         {
-            await _videoSessionRepository.UpdateStateAsync(roomCode, userGuid, true, isAudioEnabled);
+            await _videoSessionRepository.UpdateStateAsync(code, userGuid, true, isAudioEnabled);
         }
-        await Clients.Group(roomCode).SendAsync("AudioToggle", new { userId, isAudioEnabled });
+        await Clients.Group(code).SendAsync("AudioToggle", new { userId, isAudioEnabled });
     }
+
+    private static string NormalizeRoomCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
 
     public override async Task OnConnectedAsync()
     {
@@ -177,11 +187,13 @@ public class RoomHub : Hub
 
     public async Task JoinRoomGroup(string roomCode)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
+        var code = NormalizeRoomCode(roomCode);
+        await Groups.AddToGroupAsync(Context.ConnectionId, code);
     }
 
     public async Task LeaveRoomGroup(string roomCode)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
+        var code = NormalizeRoomCode(roomCode);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, code);
     }
 }

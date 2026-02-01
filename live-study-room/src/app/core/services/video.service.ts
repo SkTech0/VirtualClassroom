@@ -270,7 +270,7 @@ export class VideoService {
 
     try {
 
-      this.roomCode = roomCode;
+      this.roomCode = (roomCode || '').trim().toUpperCase();
 
       this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
@@ -304,9 +304,9 @@ export class VideoService {
 
  
 
-      // Join video call via SignalR
+      // Join video call via SignalR (use normalized room code)
 
-      await this.signalR.invoke('JoinVideoCall', roomCode);
+      await this.signalR.invoke('JoinVideoCall', this.roomCode);
 
      
 

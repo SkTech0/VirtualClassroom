@@ -44,7 +44,8 @@ import { AuthService } from '../../core/services/auth.service';
 
 import { SignalRService } from '../../core/services/signalr.service';
 
-import { filter, take } from 'rxjs/operators';
+import { filter, take, timeout, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 import { MatSidenavModule } from '@angular/material/sidenav';
 
@@ -143,7 +144,8 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
   async ngOnInit() {
 
-    this.roomCode = this.route.snapshot.paramMap.get('code') || '';
+    const code = this.route.snapshot.paramMap.get('code') || '';
+    this.roomCode = this.normalizeRoomCode(code);
 
     // Start SignalR connection if not connected
 
@@ -173,17 +175,35 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
     });
 
-    // Wait for connection, then initialize video
+    // Wait for connection (with 15s timeout), then initialize video
+
+    const connectionTimeoutMs = 15000;
 
     this.signalR.connectionState$.pipe(
 
       filter(connected => connected),
 
-      take(1)
+      take(1),
 
-    ).subscribe(() => {
+      timeout(connectionTimeoutMs),
 
-      this.initializeVideo(this.roomCode);
+      catchError(() => {
+
+        this.snackBar.open('Could not connect to video service. Please check your connection and try again.', 'Close', { duration: 5000 });
+
+        this.router.navigate(['/room', this.roomCode]);
+
+        return of(false);
+
+      })
+
+    ).subscribe(connected => {
+
+      if (connected !== false) {
+
+        this.initializeVideo(this.roomCode);
+
+      }
 
     });
 
@@ -266,6 +286,10 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
  
+
+  private normalizeRoomCode(code: string): string {
+    return (code || '').trim().toUpperCase();
+  }
 
   private async initializeVideo(roomCode: string) {
 
