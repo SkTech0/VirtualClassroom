@@ -386,6 +386,9 @@ live-study-room/libpeerconnection.log
 live-study-room/testem.log
 live-study-room/typings/
 
+# Kubernetes secrets (use secrets.example.yaml as template)
+k8s/secrets.yaml
+
 # System files
 .DS_Store
 Thumbs.db 

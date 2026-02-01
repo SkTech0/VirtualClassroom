@@ -5,6 +5,7 @@ import { PrimaryButtonComponent } from '../../shared/button/primary-button.compo
 import { DatePipe, CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { Subscription } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 interface ChatMessage {
   user: string;
@@ -45,7 +46,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (!this.roomCode) return;
 
     const token = this.auth.getToken();
-    this.signalR.startConnection('http://localhost:5275/hubs/room', {
+    this.signalR.startConnection(environment.hubUrl, {
       accessTokenFactory: () => token || '',
     });
 

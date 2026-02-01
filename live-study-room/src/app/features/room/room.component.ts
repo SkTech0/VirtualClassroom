@@ -51,8 +51,9 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { takeUntil } from 'rxjs/operators';
 
 import { ChatComponent } from '../chat/chat.component';
+import { environment } from '../../../environments/environment';
 
- 
+
 
 interface Room {
 
@@ -244,7 +245,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
  
 
-    await this.signalR.startConnection('http://localhost:5275/hubs/room', {
+    await this.signalR.startConnection(environment.hubUrl, {
 
       accessTokenFactory: () => token || ''
 

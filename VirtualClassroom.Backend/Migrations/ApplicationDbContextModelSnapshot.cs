@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using VirtualClassroom.Backend.Data;
+using VirtualClassroom.Infrastructure.Persistence;
 
 #nullable disable
 
@@ -17,7 +17,7 @@ namespace VirtualClassroom.Backend.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.5")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -152,7 +152,166 @@ namespace VirtualClassroom.Backend.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.ApplicationUser", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.LeaderboardEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FocusMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Pomodoros")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LeaderboardEntries");
+                });
+
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Pomodoro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsBreak")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("Pomodoros");
+                });
+
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HostUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("HostUserId");
+
+                    b.ToTable("Rooms");
+                });
+
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LeftAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Sessions");
+                });
+
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.VideoSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ConnectionId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsAudioEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsScreenSharing")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVideoEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LeftAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RoomCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomCode");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("VideoSessions");
+                });
+
+            modelBuilder.Entity("VirtualClassroom.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -201,10 +360,6 @@ namespace VirtualClassroom.Backend.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -242,165 +397,6 @@ namespace VirtualClassroom.Backend.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.LeaderboardEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("FocusMinutes")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Pomodoros")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("LeaderboardEntries");
-                });
-
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Pomodoro", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsBreak")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SessionId");
-
-                    b.ToTable("Pomodoros");
-                });
-
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Room", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("HostUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Subject")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("HostUserId");
-
-                    b.ToTable("Rooms");
-                });
-
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Session", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("LeftAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoomId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Sessions");
-                });
-
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.VideoSession", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ConnectionId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsAudioEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsScreenSharing")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsVideoEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("LeftAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RoomCode")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoomCode");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("VideoSessions");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -412,7 +408,7 @@ namespace VirtualClassroom.Backend.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", null)
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -421,7 +417,7 @@ namespace VirtualClassroom.Backend.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", null)
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -436,7 +432,7 @@ namespace VirtualClassroom.Backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", null)
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -445,91 +441,77 @@ namespace VirtualClassroom.Backend.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", null)
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.LeaderboardEntry", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.LeaderboardEntry", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", "User")
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Pomodoro", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Pomodoro", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.Session", "Session")
+                    b.HasOne("VirtualClassroom.Domain.Entities.Session", null)
                         .WithMany("Pomodoros")
                         .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Session");
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Room", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Room", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", "HostUser")
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("HostUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("HostUser");
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Session", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Session", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.Room", "Room")
+                    b.HasOne("VirtualClassroom.Domain.Entities.Room", null)
                         .WithMany("Sessions")
                         .HasForeignKey("RoomId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", "User")
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Room");
-
-                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.VideoSession", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.VideoSession", b =>
                 {
-                    b.HasOne("VirtualClassroom.Backend.Models.Room", "Room")
+                    b.HasOne("VirtualClassroom.Domain.Entities.Room", null)
                         .WithMany()
                         .HasForeignKey("RoomCode")
                         .HasPrincipalKey("Code")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VirtualClassroom.Backend.Models.ApplicationUser", "User")
+                    b.HasOne("VirtualClassroom.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Room");
-
-                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Room", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Room", b =>
                 {
                     b.Navigation("Sessions");
                 });
 
-            modelBuilder.Entity("VirtualClassroom.Backend.Models.Session", b =>
+            modelBuilder.Entity("VirtualClassroom.Domain.Entities.Session", b =>
                 {
                     b.Navigation("Pomodoros");
                 });

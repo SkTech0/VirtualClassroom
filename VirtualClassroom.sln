@@ -2,6 +2,12 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Domain", "VirtualClassroom.Domain\VirtualClassroom.Domain.csproj", "{A1DD481C-2424-4AF7-7002-B6005B6F5DF1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Application", "VirtualClassroom.Application\VirtualClassroom.Application.csproj", "{A2DD481C-2424-4AF7-7002-B6005B6F5DF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Infrastructure", "VirtualClassroom.Infrastructure\VirtualClassroom.Infrastructure.csproj", "{A3DD481C-2424-4AF7-7002-B6005B6F5DF3}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Backend", "VirtualClassroom.Backend\VirtualClassroom.Backend.csproj", "{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}"
 EndProject
 Global
@@ -10,6 +16,18 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1DD481C-2424-4AF7-7002-B6005B6F5DF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1DD481C-2424-4AF7-7002-B6005B6F5DF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1DD481C-2424-4AF7-7002-B6005B6F5DF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1DD481C-2424-4AF7-7002-B6005B6F5DF1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2DD481C-2424-4AF7-7002-B6005B6F5DF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2DD481C-2424-4AF7-7002-B6005B6F5DF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2DD481C-2424-4AF7-7002-B6005B6F5DF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2DD481C-2424-4AF7-7002-B6005B6F5DF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3DD481C-2424-4AF7-7002-B6005B6F5DF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3DD481C-2424-4AF7-7002-B6005B6F5DF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3DD481C-2424-4AF7-7002-B6005B6F5DF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3DD481C-2424-4AF7-7002-B6005B6F5DF3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}.Release|Any CPU.ActiveCfg = Release|Any CPU

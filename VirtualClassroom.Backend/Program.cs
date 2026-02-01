@@ -1,164 +1,267 @@
-using Microsoft.EntityFrameworkCore;
-using VirtualClassroom.Backend.Data;
-using Microsoft.AspNetCore.Identity;
+using System.Threading.RateLimiting;
+using System.Text;
+using System.Net;
+using Asp.Versioning;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using VirtualClassroom.Backend.Models;
-using VirtualClassroom.Backend.Services;
-using VirtualClassroom.Backend.Services.Interfaces;
-using VirtualClassroom.Backend.Hubs;
-using Microsoft.OpenApi.Models;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Serilog;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using VirtualClassroom.Api.Hubs;
+using VirtualClassroom.Application;
+using VirtualClassroom.Infrastructure;
+using VirtualClassroom.Infrastructure.Identity;
+using VirtualClassroom.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-
-// PostgreSQL EF Core
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Identity with GUID primary key
-builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+builder.Host.UseSerilog((ctx, lc) =>
 {
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 8;
-    options.User.RequireUniqueEmail = true;
-})
-.AddEntityFrameworkStores<ApplicationDbContext>()
-.AddDefaultTokenProviders();
-
-// JWT Authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
-    };
-
-    // ? This is the missing piece for SignalR auth via query string
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            // Check if the request is for the SignalR hub
-            var accessToken = context.Request.Query["access_token"];
-
-            // If the request is for our hub endpoint
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) &&
-                path.StartsWithSegments("/hubs/room"))
-            {
-                context.Token = accessToken;
-            }
-
-            return Task.CompletedTask;
-        }
-    };
+    lc.ReadFrom.Configuration(ctx.Configuration)
+      .Enrich.FromLogContext()
+      .WriteTo.Console();
 });
 
+builder.Services.AddOpenTelemetry()
+    .WithTracing(t =>
+    {
+        t.AddAspNetCoreInstrumentation()
+         .AddHttpClientInstrumentation()
+         .AddSource("VirtualClassroom");
+    })
+    .WithMetrics(m =>
+    {
+        m.AddAspNetCoreInstrumentation()
+         .AddHttpClientInstrumentation()
+;
+    });
 
-builder.Services.AddAuthorization();
-// CORS
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/room"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Teacher", p => p.RequireRole("Teacher", "Admin"));
+    options.AddPolicy("Admin", p => p.RequireRole("Admin"));
+    options.AddPolicy("Student", p => p.RequireRole("Student", "Teacher", "Admin"));
+});
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngularDev", policy =>
+    options.AddPolicy("Default", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:4200", "https://localhost:4200"])
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 100
+            }));
+    options.AddPolicy("auth", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 10
+            }));
+});
+
+builder.Services.AddHsts(options =>
+{
+    options.Preload = true;
+    options.IncludeSubDomains = true;
+    options.MaxAge = TimeSpan.FromDays(365);
+});
+
 builder.Services.AddControllers();
-// Custom services
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IRoomService, RoomService>();
-builder.Services.AddScoped<IPomodoroService, PomodoroService>();
-builder.Services.AddScoped<IVideoSessionService, VideoSessionService>();
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+}).AddMvc().AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+var useInMemory = builder.Configuration.GetValue<bool>("UseInMemory");
+var signalrBuilder = builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
+if (!useInMemory)
+    signalrBuilder.AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
 
-// SignalR
-builder.Services.AddSignalR();
-
-// Swagger with JWT support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Title = "Virtual Classroom API",
-        Version = "v1"
+        Version = "v1",
+        Description = "Enterprise Virtual Classroom - Rooms, Pomodoro, Video (LiveKit)"
     });
-
-    // JWT Auth in Swagger
-    var jwtSecurityScheme = new OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey, // <<< disables auto-prepend
-        Description = "Enter your JWT token **including** the 'Bearer' prefix (e.g., Bearer eyJ...)",
-        Reference = new OpenApiReference
-        {
-            Id = "Authorization",
-            Type = ReferenceType.SecurityScheme
-        }
-    };
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Description = "JWT Bearer token (e.g., Bearer eyJ...)"
+    });
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        { new Microsoft.OpenApi.Models.OpenApiSecurityScheme { Reference = new Microsoft.OpenApi.Models.OpenApiReference { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" } }, Array.Empty<string>() }
+    });
+});
 
-    options.AddSecurityDefinition(jwtSecurityScheme.Reference.Id, jwtSecurityScheme);
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+var healthBuilder = builder.Services.AddHealthChecks();
+if (useInMemory)
+    healthBuilder.AddDbContextCheck<ApplicationDbContext>("database");
+else
 {
-    { jwtSecurityScheme, Array.Empty<string>() }
-});
-
-});
+    healthBuilder.AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres");
+    healthBuilder.AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379", name: "redis");
+}
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Request ID for correlation (add to response and log context)
+app.Use(async (ctx, next) =>
+{
+    var requestId = ctx.Request.Headers["X-Request-ID"].FirstOrDefault()
+        ?? Guid.NewGuid().ToString("N")[..12];
+    ctx.Response.Headers["X-Request-ID"] = requestId;
+    using (Serilog.Context.LogContext.PushProperty("RequestId", requestId))
+        await next(ctx);
+});
+
+app.UseSerilogRequestLogging();
+
+// Security headers (HSTS only in Production)
+if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"] = "DENY";
+    ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next(ctx);
+});
+
+// Global exception handling: ValidationException -> 400, InvalidOperationException -> 400, others -> 500
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        await next(ctx);
+    }
+    catch (Exception ex)
+    {
+        var err = ex is AggregateException agg ? agg.GetBaseException() : ex;
+        ctx.Response.Clear();
+        ctx.Response.ContentType = "application/json";
+        if (err is FluentValidation.ValidationException validationEx)
+        {
+            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            var errors = validationEx.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
+            await ctx.Response.WriteAsJsonAsync(new { errors, message = "Validation failed" });
+        }
+        else if (err is InvalidOperationException opEx)
+        {
+            ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await ctx.Response.WriteAsJsonAsync(new { message = opEx.Message });
+        }
+        else
+        {
+            ctx.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            var msg = app.Environment.IsDevelopment() ? err.ToString() : "An error occurred";
+            await ctx.Response.WriteAsJsonAsync(new { message = "An error occurred", detail = msg });
+        }
+    }
+});
+app.UseRateLimiter();
+app.UseCors("Default");
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Swagger only in non-Production (or when explicitly enabled)
+var allowSwagger = app.Environment.IsDevelopment()
+    || builder.Configuration.GetValue<bool>("EnableSwagger");
+if (allowSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Virtual Classroom API V1");
-        c.RoutePrefix = string.Empty; // To access Swagger at root (http://localhost:5000/)
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Virtual Classroom API v1");
+        c.RoutePrefix = string.Empty;
     });
 }
 
-app.UseRouting();
-app.UseCors("AllowAngularDev");
 app.MapControllers();
-app.UseAuthentication();
-app.UseAuthorization();
-
 app.MapHub<RoomHub>("/hubs/room");
+app.MapHealthChecks("/health");
+
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-    string[] roles = new[] { "User" };
-    foreach (var role in roles)
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (useInMemory)
+        await db.Database.EnsureCreatedAsync();
+    else
+        await db.Database.MigrateAsync();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Microsoft.AspNetCore.Identity.IdentityRole<Guid>>>();
+    foreach (var role in new[] { "Admin", "Teacher", "Student" })
     {
         if (!await roleManager.RoleExistsAsync(role))
-        {
-            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-        }
+            await roleManager.CreateAsync(new Microsoft.AspNetCore.Identity.IdentityRole<Guid>(role));
     }
 }
+
 app.Run();

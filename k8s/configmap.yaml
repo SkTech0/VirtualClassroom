@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: virtualclassroom-config
+  namespace: virtualclassroom
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ConnectionStrings__Redis: "redis-service:6379"
+  Cors__Origins__0: "https://virtualclassroom.example.com"
+  JwtSettings__Issuer: "VirtualClassroomIssuer"
+  JwtSettings__Audience: "VirtualClassroomAudience"
+  LiveKit__ApiKey: "changeme"
+  LiveKit__ApiSecret: "changeme"

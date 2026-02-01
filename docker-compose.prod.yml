@@ -1,0 +1,9 @@
+# Production-like override: ASPNETCORE_ENVIRONMENT=Production, no Swagger by default
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - UseInMemory=false
+      - EnableSwagger=false

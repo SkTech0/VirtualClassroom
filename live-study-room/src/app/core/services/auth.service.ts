@@ -1,17 +1,22 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  expiresAt: string;
   username: string;
   email: string;
+  role: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly BASE_URL = 'http://localhost:5275/api/auth'; // Update as needed
-  private currentUserSubject = new BehaviorSubject<{ username: string; email: string } | null>(this.getUserFromStorage());
+  private readonly BASE_URL = `${environment.apiUrl}/auth`;
+  private currentUserSubject = new BehaviorSubject<{ username: string; email: string; role?: string } | null>(this.getUserFromStorage());
   currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {}
@@ -22,14 +27,23 @@ export class AuthService {
     );
   }
 
-  register(data: any): Observable<AuthResponse> {
+  register(data: { email: string; username: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.BASE_URL}/register`, data).pipe(
+      tap(res => this.setSession(res))
+    );
+  }
+
+  refreshToken(): Observable<AuthResponse> {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) throw new Error('No refresh token');
+    return this.http.post<AuthResponse>(`${this.BASE_URL}/refresh`, { refreshToken }).pipe(
       tap(res => this.setSession(res))
     );
   }
 
   logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     this.currentUserSubject.next(null);
   }
@@ -39,27 +53,23 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
-    if (!res || !res.token || !res.username || !res.email) {
+    if (!res || !res.accessToken || !res.username || !res.email) {
       console.error('Invalid response data. Cannot set session.');
       return;
     }
 
-    localStorage.setItem('token', res.token);
-    const user = {
-      username: res.username,
-      email: res.email
-    };
-
+    localStorage.setItem('token', res.accessToken);
+    localStorage.setItem('refreshToken', res.refreshToken || '');
+    const user = { username: res.username, email: res.email, role: res.role || 'Student' };
     try {
       localStorage.setItem('user', JSON.stringify(user));
     } catch (error) {
       console.error('Error saving user data to localStorage:', error);
     }
-
     this.currentUserSubject.next(user);
   }
 
-  public getUserFromStorage(): { username: string; email: string } | null {
+  public getUserFromStorage(): { username: string; email: string; role?: string } | null {
     const userData = localStorage.getItem('user');
     if (!userData) {
       console.warn('No user data found in localStorage');

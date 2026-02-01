@@ -1,0 +1,27 @@
+# Ingress for API (and optionally frontend). TLS and host to be adjusted per cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: virtualclassroom-ingress
+  namespace: virtualclassroom
+  annotations:
+    # nginx ingress example (adjust for your ingress controller)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.virtualclassroom.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: virtualclassroom-api-service
+            port:
+              number: 80
+  # tls:
+  # - hosts:
+  #   - api.virtualclassroom.example.com
+  #   secretName: virtualclassroom-tls

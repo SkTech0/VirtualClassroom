@@ -49,8 +49,9 @@ import { filter, take } from 'rxjs/operators';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
 import { MatListModule } from '@angular/material/list';
+import { environment } from '../../../environments/environment';
 
- 
+
 
 @Component({
 
@@ -150,7 +151,7 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
       const token = this.auth.getToken();
 
-      await this.signalR.startConnection('http://localhost:5275/hubs/room', {
+      await this.signalR.startConnection(environment.hubUrl, {
 
         accessTokenFactory: () => token || ''
 
