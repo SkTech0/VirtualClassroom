@@ -1,6 +1,44 @@
 <div class="container-fluid py-3 video-conference-container">
 
-  <mat-sidenav-container class="video-conference-drawer-container" autosize>
+  <!-- Pre-join screen: shown when user lands on /video/:code before clicking Join -->
+  <div *ngIf="showPreJoin" class="pre-join-screen">
+    <mat-card class="pre-join-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon class="pre-join-icon">video_call</mat-icon>
+          Video Call
+        </mat-card-title>
+        <mat-card-subtitle>Room: {{ roomCode }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="pre-join-text">Allow camera and microphone to join the video call. You'll see yourself and others in the room.</p>
+        <div class="pre-join-actions">
+          <button mat-raised-button color="primary" (click)="onJoinVideoCallClick()" class="join-button">
+            <mat-icon>videocam</mat-icon>
+            Join Video Call
+          </button>
+          <button mat-button (click)="backToRoom()">
+            <mat-icon>arrow_back</mat-icon>
+            Back to room
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Connecting: after user clicked Join, before media is ready -->
+  <div *ngIf="joining && !isInCall" class="connecting-screen">
+    <mat-card class="connecting-card">
+      <mat-card-content>
+        <mat-spinner diameter="48" class="connecting-spinner"></mat-spinner>
+        <p class="connecting-text">Connecting to video call...</p>
+        <p class="connecting-hint">You may be asked to allow camera and microphone.</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- In-call: video grid and controls -->
+  <mat-sidenav-container *ngIf="isInCall" class="video-conference-drawer-container" autosize>
 
     <mat-sidenav #drawer mode="side" position="end" class="video-conference-drawer">
 
@@ -237,28 +275,6 @@
       </div>
 
  
-
-      <!-- Connection Status -->
-
-      <div class="connection-status" *ngIf="!isInCall">
-
-        <mat-card>
-
-          <mat-card-content>
-
-            <div class="d-flex align-items-center gap-2 p-2">
-
-              <mat-icon class="status-icon">wifi</mat-icon>
-
-              <span>Connecting to video call...</span>
-
-            </div>
-
-          </mat-card-content>
-
-        </mat-card>
-
-      </div>
 
     </mat-sidenav-content>
 

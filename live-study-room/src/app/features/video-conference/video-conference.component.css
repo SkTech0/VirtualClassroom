@@ -12,6 +12,140 @@
 
  
 
+/* Pre-join screen: shown when user lands on /video/:code */
+
+.pre-join-screen {
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  min-height: 80vh;
+
+  padding: 2rem;
+
+}
+
+.pre-join-card {
+
+  max-width: 420px;
+
+  width: 100%;
+
+  text-align: center;
+
+}
+
+.pre-join-icon {
+
+  font-size: 48px;
+
+  width: 48px;
+
+  height: 48px;
+
+  margin-right: 0.5rem;
+
+  vertical-align: middle;
+
+}
+
+.pre-join-text {
+
+  margin: 1rem 0 1.5rem;
+
+  color: #666;
+
+  line-height: 1.5;
+
+}
+
+.pre-join-actions {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 0.75rem;
+
+  align-items: center;
+
+}
+
+.pre-join-actions .join-button {
+
+  min-width: 220px;
+
+  height: 48px;
+
+  font-size: 1rem;
+
+}
+
+.pre-join-actions .join-button mat-icon {
+
+  margin-right: 0.5rem;
+
+  vertical-align: middle;
+
+}
+
+ 
+
+/* Connecting screen: after user clicked Join */
+
+.connecting-screen {
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  min-height: 80vh;
+
+  padding: 2rem;
+
+}
+
+.connecting-card {
+
+  max-width: 360px;
+
+  width: 100%;
+
+  text-align: center;
+
+  padding: 2rem;
+
+}
+
+.connecting-spinner {
+
+  margin: 0 auto 1rem;
+
+}
+
+.connecting-text {
+
+  font-weight: 500;
+
+  margin-bottom: 0.5rem;
+
+}
+
+.connecting-hint {
+
+  color: #666;
+
+  font-size: 0.9rem;
+
+}
+
+ 
+
 .local-video, .remote-video {
 
   border-radius: 8px;

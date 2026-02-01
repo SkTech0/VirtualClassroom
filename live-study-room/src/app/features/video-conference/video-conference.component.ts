@@ -50,6 +50,9 @@ import { of } from 'rxjs';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
 import { MatListModule } from '@angular/material/list';
+
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
 import { environment } from '../../../environments/environment';
 
 
@@ -76,7 +79,9 @@ import { environment } from '../../../environments/environment';
 
     MatSidenavModule,
 
-    MatListModule
+    MatListModule,
+
+    MatProgressSpinnerModule
 
   ],
 
@@ -108,7 +113,11 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
   roomCode = '';
 
- 
+  /** Show pre-join screen (room code + "Join Video Call" button) until user clicks join */
+  showPreJoin = true;
+
+  /** True while connecting and requesting camera/mic after user clicked join */
+  joining = false;
 
   private destroy$ = new Subject<void>();
 
@@ -142,24 +151,10 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
  
 
-  async ngOnInit() {
+  ngOnInit() {
 
     const code = this.route.snapshot.paramMap.get('code') || '';
     this.roomCode = this.normalizeRoomCode(code);
-
-    // Start SignalR connection if not connected
-
-    if (!this.signalR.isConnected()) {
-
-      const token = this.auth.getToken();
-
-      await this.signalR.startConnection(environment.hubUrl, {
-
-        accessTokenFactory: () => token || ''
-
-      });
-
-    }
 
     // Listen for room closed event
 
@@ -172,38 +167,6 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
       this.signalR.stopConnection();
 
       this.router.navigate(['/room']);
-
-    });
-
-    // Wait for connection (with 15s timeout), then initialize video
-
-    const connectionTimeoutMs = 15000;
-
-    this.signalR.connectionState$.pipe(
-
-      filter(connected => connected),
-
-      take(1),
-
-      timeout(connectionTimeoutMs),
-
-      catchError(() => {
-
-        this.snackBar.open('Could not connect to video service. Please check your connection and try again.', 'Close', { duration: 5000 });
-
-        this.router.navigate(['/room', this.roomCode]);
-
-        return of(false);
-
-      })
-
-    ).subscribe(connected => {
-
-      if (connected !== false) {
-
-        this.initializeVideo(this.roomCode);
-
-      }
 
     });
 
@@ -291,32 +254,60 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     return (code || '').trim().toUpperCase();
   }
 
-  private async initializeVideo(roomCode: string) {
+  /** Called when user clicks "Join Video Call" on the pre-join screen */
+  async onJoinVideoCallClick(): Promise<void> {
+    if (!this.roomCode || this.joining || this.isInCall) return;
+    this.showPreJoin = false;
+    this.joining = true;
+    this.cdr.detectChanges();
 
-    try {
-
-      const success = await this.videoService.initializeVideo(roomCode);
-
-      if (!success) {
-
-        this.snackBar.open('Failed to access camera/microphone. Please check permissions.', 'Close', { duration: 7000 });
-
-        console.error('getUserMedia failed for this participant.');
-
-      } else {
-
-        console.log('Media initialized and joined room.');
-
-      }
-
-    } catch (err) {
-
-      this.snackBar.open('Error initializing video: ' + String(err), 'Close', { duration: 7000 });
-
-      console.error('Error in initializeVideo:', err);
-
+    if (!this.signalR.isConnected()) {
+      const token = this.auth.getToken();
+      this.signalR.startConnection(environment.hubUrl, {
+        accessTokenFactory: () => token || ''
+      });
     }
 
+    const connectionTimeoutMs = 15000;
+    this.signalR.connectionState$.pipe(
+      filter(connected => connected),
+      take(1),
+      timeout(connectionTimeoutMs),
+      catchError(() => {
+        this.joining = false;
+        this.showPreJoin = true;
+        this.cdr.detectChanges();
+        this.snackBar.open('Could not connect to video service. Please check your connection and try again.', 'Close', { duration: 5000 });
+        return of(false);
+      })
+    ).subscribe(async (connected) => {
+      if (connected === false) return;
+      await this.initializeVideo(this.roomCode);
+      this.joining = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  /** Go back to room without joining */
+  backToRoom(): void {
+    this.router.navigate(['/room', this.roomCode]);
+  }
+
+  private async initializeVideo(roomCode: string): Promise<void> {
+    try {
+      const success = await this.videoService.initializeVideo(roomCode);
+      if (!success) {
+        this.snackBar.open('Failed to access camera/microphone. Please check permissions.', 'Close', { duration: 7000 });
+        this.showPreJoin = true;
+        this.joining = false;
+        this.cdr.detectChanges();
+      }
+    } catch (err) {
+      this.snackBar.open('Error initializing video: ' + String(err), 'Close', { duration: 7000 });
+      this.showPreJoin = true;
+      this.joining = false;
+      this.cdr.detectChanges();
+    }
   }
 
  
