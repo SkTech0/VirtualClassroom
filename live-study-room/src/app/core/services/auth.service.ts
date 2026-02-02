@@ -109,9 +109,9 @@ export class AuthService {
   private getUserFromToken(token: string): { username: string; email: string; role?: string } | null {
     try {
       const payload = JSON.parse(atob(token.split('.')[1])) as Record<string, unknown>;
-      const email = (payload.email ?? payload.Email) as string | undefined;
-      const username = (payload.unique_name ?? payload.Username ?? payload.sub) as string | undefined;
-      const role = (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? payload.role) as string | undefined;
+      const email = (payload['email'] ?? payload['Email']) as string | undefined;
+      const username = (payload['unique_name'] ?? payload['Username'] ?? payload['sub']) as string | undefined;
+      const role = (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? payload['role']) as string | undefined;
       if (email && username) {
         return { username, email, role: role ?? 'Student' };
       }
