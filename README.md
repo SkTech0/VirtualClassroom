@@ -167,14 +167,17 @@ The app is ready for Railway with two services: **backend** (API + SignalR) and 
 4. **Variables** (set in Railway dashboard; use **Variables** tab):
    - `ASPNETCORE_ENVIRONMENT` = `Production`
    - `PORT` — set automatically by Railway
-   - `ConnectionStrings__DefaultConnection` — your PostgreSQL connection string (Railway Postgres add-on gives this)
-   - `ConnectionStrings__Redis` — optional; Redis URL if using Redis for SignalR (e.g. Redis add-on)
-   - `JwtSettings__SecretKey` — a long random secret (e.g. 64+ chars)
+   - `ConnectionStrings__DefaultConnection` — **Npgsql format** (see below), not a URL
+   - `ConnectionStrings__Redis` — optional; e.g. `host:6379` or `host:6379,password=xxx` if Redis has a password
+   - `JwtSettings__SecretKey` — a long random secret (64+ chars; generate one, do not use a placeholder)
    - `JwtSettings__Issuer` = `VirtualClassroomIssuer`
    - `JwtSettings__Audience` = `VirtualClassroomAudience`
    - `Cors__Origins__0` = your frontend URL (e.g. `https://your-frontend.up.railway.app`)
    - `UseInMemory` = `false` (use `true` only for quick test without a database)
-5. Add **PostgreSQL** (and optionally **Redis**) from Railway add-ons; paste the connection string into `ConnectionStrings__DefaultConnection`.
+5. Add **PostgreSQL** (and optionally **Redis**) from Railway add-ons.
+   - **PostgreSQL:** Railway gives a `DATABASE_URL` (URL). The app expects **Npgsql format**:
+     `Host=hostname;Port=5432;Database=railway;Username=postgres;Password=YOUR_PASSWORD`
+     Use your Postgres service variables: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` to build this string (e.g. `Host=${{PGHOST}};Port=${{PGPORT}};Database=${{PGDATABASE}};Username=${{PGUSER}};Password=${{PGPASSWORD}}` if Railway supports variable refs, or paste the values manually).
 6. Deploy. Note the backend URL (e.g. `https://your-backend.up.railway.app`). Use it for the frontend in step 2.
 
 ### 2. Frontend service
