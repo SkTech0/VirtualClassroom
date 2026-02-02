@@ -1,107 +1,50 @@
 # VirtualClassroom
 
-A real-time virtual classroom application built with Angular frontend and .NET Core backend, featuring live study rooms, Pomodoro timer, chat functionality, and leaderboards.
+A real-time virtual classroom app: Angular frontend and .NET backend with live study rooms, Pomodoro timer, chat, and video calls.
 
-## Project Structure
-
-```
-VirtualClassroom/
-├── live-study-room/          # Angular frontend application
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── core/         # Core services, guards, interceptors
-│   │   │   ├── features/     # Feature modules (auth, chat, room, etc.)
-│   │   │   └── shared/       # Shared components, models, pipes
-│   │   └── ...
-│   └── ...
-├── VirtualClassroom.Backend/ # .NET Core Web API backend
-│   ├── Controllers/          # API controllers
-│   ├── Data/                 # Entity Framework context
-│   ├── DTOs/                 # Data transfer objects
-│   ├── Hubs/                 # SignalR hubs for real-time communication
-│   ├── Models/               # Entity models
-│   ├── Services/             # Business logic services
-│   └── ...
-└── VirtualClassroom.sln      # Visual Studio solution file
-```
+---
 
 ## Features
 
-- **Live Study Rooms**: Create and join virtual study rooms
-- **Real-time Chat**: Communicate with other students in real-time
-- **Pomodoro Timer**: Built-in productivity timer
-- **Leaderboards**: Track study progress and achievements
-- **User Authentication**: Secure login and registration system
-- **SignalR Integration**: Real-time communication between users
+- **Live study rooms** — Create or join rooms with a 6-character code
+- **Real-time chat** — SignalR-based chat in each room
+- **Pomodoro timer** — Shared timer in room (synced via SignalR)
+- **Video calls** — WebRTC with LiveKit (camera, mic, screen share)
+- **Auth** — JWT login/register and refresh tokens
+- **Leaderboard** — UI (backend API planned)
+
+---
 
 ## Prerequisites
 
-- .NET 10 SDK
-- Node.js 18+ and npm
-- Angular CLI 19 (`npm install -g @angular/cli@19`)
+- **.NET 10** SDK  
+- **Node.js 18+** and npm  
+- **Angular CLI 19** — `npm install -g @angular/cli@19`  
+- **PostgreSQL** and **Redis** (optional for local dev; backend can use in-memory)
 
-## Getting Started
+---
 
-### Backend Setup
+## Run locally
 
-1. Navigate to the backend directory:
-   ```bash
-   cd VirtualClassroom.Backend
-   ```
+### 1. Backend
 
-2. Restore NuGet packages:
-   ```bash
-   dotnet restore
-   ```
-
-3. *(Optional)* If using PostgreSQL, run migrations: `dotnet ef database update`. With in-memory (default in Development), skip this.
-
-4. Start the backend server:
-   ```bash
-   dotnet run
-   ```
-
-The backend will be available at **http://localhost:5275** (see `Properties/launchSettings.json`). Swagger at http://localhost:5275 when running.
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd live-study-room
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   ng serve
-   ```
-
-The frontend will be available at `http://localhost:4200`.
-
-## How to test on your local system
-
-### 1. Start the backend
-
-Open a terminal in the project root:
+From repo root:
 
 ```bash
 cd VirtualClassroom.Backend
+dotnet restore
 dotnet run
 ```
 
-- Backend runs at **http://localhost:5275** (API + SignalR).
-- In Development it uses **in-memory storage** by default (no PostgreSQL or Redis needed). If you see a PostgreSQL error, set `UseInMemory: true` in `appsettings.Development.json`.
-- If port 5275 is already in use, run: `dotnet run --launch-profile httpAlt` (uses port 5276 — then point the frontend to that port; see step 3).
+- API + SignalR: **http://localhost:5275**
+- Swagger: http://localhost:5275 (when running)
+- Health: http://localhost:5275/health
 
-Leave this terminal running.
+**Development:** Uses in-memory storage by default. To use PostgreSQL/Redis, set `UseInMemory: false` in `appsettings.Development.json` and configure connection strings. If port 5275 is in use, use `dotnet run --launch-profile httpAlt` (port 5276) and point the frontend to that port.
 
-### 2. Start the frontend
+### 2. Frontend
 
-Open a **second** terminal:
+In a second terminal:
 
 ```bash
 cd live-study-room
@@ -109,102 +52,154 @@ npm install
 ng serve
 ```
 
-- App runs at **http://localhost:4200**.
-- It talks to the backend at **http://localhost:5275** (see `live-study-room/src/environments/environment.ts`). If your backend is on another port (e.g. 5276), change `apiUrl` and `hubUrl` there.
+- App: **http://localhost:4200**
+- Backend URL is in `src/environments/environment.ts` (`apiUrl`, `hubUrl`). Change them if the backend runs on another port.
 
-### 3. Test in the browser
+### 3. Try it
 
-1. Open **http://localhost:4200** in your browser.
-2. **Sign up** (e.g. name, email, password) or **Sign in** if you already have an account.
-3. **Rooms:** Create a room (e.g. subject "Math") or join with a 6-character room code.
-4. **In a room:** Use **Chat**, **Pomodoro** (shared timer), and **Video Call** (allow camera/mic when prompted).
-5. **Two users:** To test chat/video with two people, open a second **incognito/private** window (or another browser), sign up a different user, and join the same room with the room code.
+1. Open http://localhost:4200
+2. Sign up or sign in
+3. Create a room (e.g. subject "Math") or join with a 6-character code
+4. In the room: use Chat, Pomodoro, and Video Call (allow camera/mic when prompted)
+5. For two users: open a second incognito window, sign up another user, join the same room with the code
 
-### 4. Optional: API / health check
+### 4. Optional: Docker Compose (backend + Postgres + Redis)
 
-- **Swagger UI:** http://localhost:5275 (when backend is running).
-- **Health:** http://localhost:5275/health.
+From repo root:
 
-## Development
+```bash
+docker compose up --build
+```
 
-### Backend Technologies
-- .NET 10
-- Entity Framework Core
-- SignalR for real-time communication
-- JWT authentication
-- PostgreSQL (or InMemory for development)
+Backend will be at http://localhost:5275. Then run the frontend with `ng serve` in `live-study-room` as above.
 
-### Frontend Technologies
-- Angular 19
-- TypeScript 5.5+
-- SignalR client
-- Angular Material
+---
 
-## API Endpoints
+## Testing
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
+### Unit tests (backend)
 
-### Rooms
-- `GET /api/rooms` - Get all rooms
-- `POST /api/rooms` - Create a new room
-- `POST /api/rooms/{id}/join` - Join a room
+From repo root:
 
-### Pomodoro
-- `POST /api/pomodoro/start` - Start a Pomodoro session
-- `POST /api/pomodoro/end` - End a Pomodoro session
+```bash
+dotnet test VirtualClassroom.Tests.Unit/VirtualClassroom.Tests.Unit.csproj
+```
 
-## Deploy to Railway
+Covers Auth, Rooms, Pomodoro, Video handlers and validators, `ValidationBehavior`, and `InMemoryAuthTokenService`. With coverage:
 
-The app is ready for Railway with two services: **backend** (API + SignalR) and **frontend** (Angular).
+```bash
+dotnet test VirtualClassroom.Tests.Unit/VirtualClassroom.Tests.Unit.csproj --collect:"XPlat Code Coverage"
+```
 
-### 1. Backend service
+### Manual E2E
 
-1. In Railway, create a new project and add a service.
-2. Connect the repo.
-3. **Critical:** Set **Root Directory** to **empty** (clear the field). If it is set to `VirtualClassroom.Backend`, the build will fail with "Project file does not exist: VirtualClassroom.sln" because the build context must be the repo root.
-4. **Build:** With root empty, Railway uses `railway.toml` at repo root and builds with `Dockerfile.backend`; the build context is the full repo so `VirtualClassroom.sln` is included. (Or set **Dockerfile Path** to `Dockerfile.backend` in service settings.)
-5. **Variables** (set in Railway dashboard; use **Variables** tab):
-   - `ASPNETCORE_ENVIRONMENT` = `Production`
-   - `PORT` — set automatically by Railway
-   - `ConnectionStrings__DefaultConnection` — **Npgsql format** (see below), not a URL
-   - `ConnectionStrings__Redis` — if using Redis with a password use `host:port,password=YOUR_REDIS_PASSWORD`; for Redis 6 ACL with username use `host:port,user=default,password=YOUR_REDIS_PASSWORD` (e.g. `redis.railway.internal:6379,user=default,password=...`).
-   - `JwtSettings__SecretKey` — a long random secret (64+ chars; generate one, do not use a placeholder)
-   - `JwtSettings__Issuer` = `VirtualClassroomIssuer`
-   - `JwtSettings__Audience` = `VirtualClassroomAudience`
-   - `Cors__Origins__0` = your frontend URL (e.g. `https://your-frontend.up.railway.app`)
-   - `UseInMemory` = `false` (use `true` only for quick test without a database)
-6. Add **PostgreSQL** (and optionally **Redis**) from Railway add-ons.
-   - **PostgreSQL:** Railway gives a `DATABASE_URL` (URL). The app expects **Npgsql format**:
-     `Host=hostname;Port=5432;Database=railway;Username=postgres;Password=YOUR_PASSWORD`
-     Use your Postgres service variables: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` to build this string (e.g. `Host=${{PGHOST}};Port=${{PGPORT}};Database=${{PGDATABASE}};Username=${{PGUSER}};Password=${{PGPASSWORD}}` if Railway supports variable refs, or paste the values manually).
-7. Deploy. Note the backend URL (e.g. `https://your-backend.up.railway.app`). Use it for the frontend in step 2.
+1. Start backend and frontend as in **Run locally**
+2. Use two browsers (or one normal + one incognito), two users, same room
+3. Verify: sign up, create/join room, chat, Pomodoro, video (mute/unmute, screen share, leave)
 
-### 2. Frontend service
+---
 
-1. Add a second service in the same (or another) project.
-2. **Root Directory:** `live-study-room`.
-3. **Build:** Dockerfile (uses `live-study-room/Dockerfile`).
-4. **Variables** (build-time; set before deploy):
-   - `API_URL` = `https://YOUR-BACKEND.railway.app/api/v1` (your backend URL + `/api/v1`)
-   - `HUB_URL` = `https://YOUR-BACKEND.railway.app/hubs/room` (your backend URL + `/hubs/room`)
-5. Deploy. The frontend will call the backend at the URLs you set.
+## API (v1)
 
-### 3. After deploy
+Base path: `/api/v1`. SignalR hub: `/hubs/room`.
 
-- Open the frontend URL; sign up and use rooms, chat, Pomodoro, and video.
-- Backend health: `https://YOUR-BACKEND.railway.app/health`
-- If register/login returns 500 or 503, ensure DB connection and migrations (see Deploy section). If using PostgreSQL, run migrations once (e.g. locally with `DATABASE_URL` set to Railway Postgres, or use Railway’s shell and `dotnet ef database update`).
+| Area        | Method | Path / action |
+|------------|--------|----------------|
+| Auth       | POST   | `auth/register`, `auth/login`, `auth/refresh` |
+| Auth       | GET    | `auth/me` |
+| Rooms      | POST   | `rooms/create`, `rooms/join`, `rooms/leave` |
+| Rooms      | GET    | `rooms/mine`, `rooms/{code}`, `rooms/{code}/participants` |
+| Rooms      | POST   | `rooms/knock-knock`, `rooms/reminder` |
+| Pomodoro   | POST   | `pomodoro/start`, `pomodoro/end` |
+| Pomodoro   | GET    | `pomodoro/session/{sessionId}` |
+| Video      | POST   | `video/livekit-token` |
+
+---
+
+## Deploy to production
+
+### Option A: Railway
+
+**Backend**
+
+1. New project → add service → connect repo
+2. **Root directory:** leave **empty** (build must see repo root and `VirtualClassroom.sln`)
+3. **Build:** Dockerfile path = `Dockerfile.backend` (uses `railway.toml` at root)
+4. **Variables:**  
+   `ASPNETCORE_ENVIRONMENT=Production`  
+   `PORT` (set by Railway)  
+   `ConnectionStrings__DefaultConnection` = Npgsql format: `Host=...;Port=5432;Database=...;Username=...;Password=...`  
+   `ConnectionStrings__Redis` = e.g. `host:port` or `host:port,password=...`  
+   `JwtSettings__SecretKey` = long random secret (64+ chars)  
+   `JwtSettings__Issuer` = `VirtualClassroomIssuer`  
+   `JwtSettings__Audience` = `VirtualClassroomAudience`  
+   `Cors__Origins__0` = frontend URL (e.g. `https://your-app.up.railway.app`)  
+   `UseInMemory` = `false`
+5. Add **PostgreSQL** (and optionally **Redis**) from Railway; set connection strings from their variables
+6. Deploy; note backend URL
+
+**Frontend**
+
+1. Add a second service; **Root directory:** `live-study-room`
+2. Build: use `live-study-room/Dockerfile`
+3. **Build variables:**  
+   `API_URL` = `https://YOUR-BACKEND.up.railway.app/api/v1`  
+   `HUB_URL` = `https://YOUR-BACKEND.up.railway.app/hubs/room`
+4. Deploy
+
+**After deploy:** Open frontend URL; backend health: `https://YOUR-BACKEND.up.railway.app/health`. If auth returns 500/503, check DB and that migrations ran (e.g. run `dotnet ef database update` once with production connection string).
+
+### Option B: Docker (self-hosted)
+
+- **Backend image:** From repo root, `docker build -f Dockerfile.backend -t virtualclassroom-api .`  
+  Run with env vars for `ConnectionStrings`, `JwtSettings`, `Cors__Origins__0`, etc.
+- **Frontend image:** From `live-study-room`, build with `API_URL` and `HUB_URL`; serve with nginx. See `live-study-room/Dockerfile` and `scripts/set-env-prod.js`.
+
+### Option C: Kubernetes
+
+Manifests in `k8s/`: namespace, deployment, configmap, ingress, and `secrets.example.yaml`. Replace placeholders in ConfigMap and Secrets (CORS origins, DB, JWT, LiveKit); apply with `kubectl apply -f k8s/`.
+
+---
+
+## Project structure
+
+```
+VirtualClassroom/
+├── live-study-room/           # Angular 19 frontend
+├── VirtualClassroom.Backend/  # .NET 10 API + SignalR
+├── VirtualClassroom.Application/   # CQRS handlers, validators
+├── VirtualClassroom.Domain/        # Entities
+├── VirtualClassroom.Infrastructure/ # EF, Redis, LiveKit, auth
+├── VirtualClassroom.Tests.Unit/    # Backend unit tests
+├── Dockerfile.backend
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── railway.toml
+└── k8s/                       # Kubernetes manifests
+```
+
+---
+
+## Tech stack
+
+| Layer     | Stack |
+|----------|--------|
+| Backend  | .NET 10, EF Core, SignalR, JWT, MediatR, FluentValidation, Serilog, OpenTelemetry |
+| Frontend | Angular 19, TypeScript, Angular Material, SignalR client |
+| Data     | PostgreSQL (or in-memory for dev), Redis (SignalR backplane in prod) |
+| Video    | WebRTC, LiveKit |
+
+---
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork the repo  
+2. Create a branch (`git checkout -b feature/your-feature`)  
+3. Commit and push  
+4. Open a Pull Request  
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+MIT — see the LICENSE file.
