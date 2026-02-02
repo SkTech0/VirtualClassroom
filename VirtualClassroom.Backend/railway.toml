@@ -1,11 +1,10 @@
 # Railway backend service
-# Set root directory to VirtualClassroom.Backend in Railway dashboard.
-# buildContext = "../" makes Docker use repo root so VirtualClassroom.sln is available.
+# In Railway dashboard: set Root Directory to repo root (leave empty).
+# Set Dockerfile Path to Dockerfile.backend so context is repo root and VirtualClassroom.sln is included.
 
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
-buildContext = "../"
+dockerfilePath = "Dockerfile.backend"
 
 [deploy]
 healthcheckPath = "/health"

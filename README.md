@@ -162,8 +162,8 @@ The app is ready for Railway with two services: **backend** (API + SignalR) and 
 ### 1. Backend service
 
 1. In Railway, create a new project and add a service.
-2. Connect the repo and set **Root Directory** to the repo root (or leave empty if deploying from root).
-3. **Build:** Dockerfile — set **Dockerfile Path** to `VirtualClassroom.Backend/Dockerfile` (context = repo root).
+2. Connect the repo. Set **Root Directory** to the **repo root** (leave empty — do **not** set it to `VirtualClassroom.Backend`).
+3. **Build:** set **Dockerfile Path** to `Dockerfile.backend`. This file is at the repo root so the build context includes `VirtualClassroom.sln`.
 4. **Variables** (set in Railway dashboard; use **Variables** tab):
    - `ASPNETCORE_ENVIRONMENT` = `Production`
    - `PORT` — set automatically by Railway
