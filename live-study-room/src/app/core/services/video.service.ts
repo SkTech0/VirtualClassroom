@@ -459,6 +459,9 @@ export class VideoService {
 
     if (!this.localStream) return;
 
+    // Ignore our own offer (should not happen if backend sends to target only)
+    if (from === this.currentUserId) return;
+
     const existingPeer = this.peers.get(from);
 
     if (existingPeer) {
@@ -549,19 +552,25 @@ export class VideoService {
 
   private handleVideoAnswer(from: string, answer: any) {
 
+    // Ignore our own answer (e.g. if backend ever broadcast to room)
+    if (from === this.currentUserId) return;
+
     if (this.answerAppliedForPeer.has(from)) return;
 
     const peer = this.peers.get(from);
 
     if (!peer) return;
 
+    // Mark before applying to prevent concurrent duplicate delivery from causing "wrong state: stable"
+    this.answerAppliedForPeer.add(from);
+
     try {
 
       peer.signal(answer);
 
-      this.answerAppliedForPeer.add(from);
-
     } catch (e) {
+
+      this.answerAppliedForPeer.delete(from);
 
       if ((e as Error)?.message?.includes('stable') === false) {
 
@@ -576,6 +585,8 @@ export class VideoService {
  
 
   private handleIceCandidate(from: string, candidate: any) {
+
+    if (from === this.currentUserId) return;
 
     const peer = this.peers.get(from);
 

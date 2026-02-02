@@ -78,17 +78,46 @@ export class AuthService {
 
   public getUserFromStorage(): { username: string; email: string; role?: string } | null {
     const userData = localStorage.getItem('user');
-    if (!userData) {
-      console.warn('No user data found in localStorage');
-      return null;
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+        localStorage.removeItem('user');
+        return null;
+      }
     }
 
-    try {
-      return JSON.parse(userData);
-    } catch (error) {
-      console.error('Error parsing user data from localStorage:', error);
-      localStorage.removeItem('user');
-      return null;
+    // Fallback: restore user from token claims when token exists but user key was never set (e.g. old session)
+    const token = this.getToken();
+    if (token) {
+      const user = this.getUserFromToken(token);
+      if (user) {
+        try {
+          localStorage.setItem('user', JSON.stringify(user));
+        } catch {
+          // ignore quota errors
+        }
+        return user;
+      }
     }
+
+    return null;
+  }
+
+  /** Decode user from JWT claims (sub, email, unique_name, role). */
+  private getUserFromToken(token: string): { username: string; email: string; role?: string } | null {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1])) as Record<string, unknown>;
+      const email = (payload.email ?? payload.Email) as string | undefined;
+      const username = (payload.unique_name ?? payload.Username ?? payload.sub) as string | undefined;
+      const role = (payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? payload.role) as string | undefined;
+      if (email && username) {
+        return { username, email, role: role ?? 'Student' };
+      }
+    } catch {
+      // invalid token
+    }
+    return null;
   }
 }

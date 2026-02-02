@@ -169,7 +169,7 @@ The app is ready for Railway with two services: **backend** (API + SignalR) and 
    - `ASPNETCORE_ENVIRONMENT` = `Production`
    - `PORT` — set automatically by Railway
    - `ConnectionStrings__DefaultConnection` — **Npgsql format** (see below), not a URL
-   - `ConnectionStrings__Redis` — optional; e.g. `host:6379` or `host:6379,password=xxx` if Redis has a password
+   - `ConnectionStrings__Redis` — if using Redis with a password use `host:port,password=YOUR_REDIS_PASSWORD`; for Redis 6 ACL with username use `host:port,user=default,password=YOUR_REDIS_PASSWORD` (e.g. `redis.railway.internal:6379,user=default,password=...`).
    - `JwtSettings__SecretKey` — a long random secret (64+ chars; generate one, do not use a placeholder)
    - `JwtSettings__Issuer` = `VirtualClassroomIssuer`
    - `JwtSettings__Audience` = `VirtualClassroomAudience`

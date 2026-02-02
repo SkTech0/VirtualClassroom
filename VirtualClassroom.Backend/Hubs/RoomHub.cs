@@ -124,21 +124,24 @@ public class RoomHub : Hub
     {
         var code = NormalizeRoomCode(roomCode);
         var fromUserId = Context.UserIdentifier;
-        await Clients.Group(code).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
+        // Send only to the target peer so the sender doesn't receive their own offer
+        await Clients.User(targetUserId).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
     }
 
     public async Task SendVideoAnswer(string roomCode, string targetUserId, object answer)
     {
         var code = NormalizeRoomCode(roomCode);
         var fromUserId = Context.UserIdentifier;
-        await Clients.Group(code).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
+        // Send only to the target peer; otherwise the answerer receives their own answer and hits "wrong state: stable"
+        await Clients.User(targetUserId).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
     }
 
     public async Task SendVideoIceCandidate(string roomCode, string targetUserId, object candidate)
     {
         var code = NormalizeRoomCode(roomCode);
         var fromUserId = Context.UserIdentifier;
-        await Clients.Group(code).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
+        // Send only to the target peer
+        await Clients.User(targetUserId).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
     }
 
     public async Task ToggleVideo(string roomCode, bool isVideoEnabled)
