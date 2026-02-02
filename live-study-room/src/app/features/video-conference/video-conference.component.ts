@@ -301,7 +301,11 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     try {
       const success = await this.videoService.initializeVideo(roomCode);
       if (!success) {
-        this.snackBar.open('Failed to access camera/microphone. Please check permissions.', 'Close', { duration: 7000 });
+        this.snackBar.open(
+          'Camera/microphone access denied. Click the lock or camera icon in your browser\'s address bar and allow access, then try again.',
+          'Close',
+          { duration: 8000 }
+        );
         this.showPreJoin = true;
         this.joining = false;
         this.cdr.detectChanges();

@@ -52,6 +52,31 @@
 
 }
 
+.waiting-for-others {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+.waiting-card {
+  max-width: 400px;
+  text-align: center;
+}
+.waiting-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 0.5rem;
+}
+.waiting-text {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+.waiting-hint {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
 .pre-join-text {
 
   margin: 1rem 0 1.5rem;

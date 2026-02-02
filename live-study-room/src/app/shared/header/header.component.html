@@ -7,11 +7,11 @@
 
   <!-- Navigation Links -->
   <nav class="d-none d-md-flex gap-3" *ngIf="user">
-    <a mat-button routerLink="/room" routerLinkActive="active-link">
+    <a mat-button routerLink="/room" routerLinkActive="active-link" matTooltip="Rooms">
       <mat-icon>meeting_room</mat-icon>
       <span class="d-none d-lg-inline">Rooms</span>
     </a>
-    <a mat-button routerLink="/leaderboard" routerLinkActive="active-link">
+    <a mat-button routerLink="/leaderboard" routerLinkActive="active-link" matTooltip="Leaderboard">
       <mat-icon>leaderboard</mat-icon>
       <span class="d-none d-lg-inline">Leaderboard</span>
     </a>
@@ -19,11 +19,11 @@
 
   <!-- Show Sign Up and Sign In when not logged in -->
   <div class="d-none d-md-flex gap-3" *ngIf="!user">
-    <a mat-button routerLink="/auth/register" routerLinkActive="active-link" color="primary">
+    <a mat-button routerLink="/auth/register" routerLinkActive="active-link" color="primary" matTooltip="Sign Up">
       <mat-icon>person_add</mat-icon>
       <span class="d-none d-lg-inline">Sign Up</span>
     </a>
-    <a mat-button routerLink="/auth/login" routerLinkActive="active-link" color="accent">
+    <a mat-button routerLink="/auth/login" routerLinkActive="active-link" color="accent" matTooltip="Sign In">
       <mat-icon>login</mat-icon>
       <span class="d-none d-lg-inline">Sign In</span>
     </a>

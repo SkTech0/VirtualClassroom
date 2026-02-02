@@ -56,63 +56,14 @@ export class LeaderboardComponent implements OnInit {
 
   loadLeaderboard() {
     this.loading = true;
-    
-    // Mock data for now - replace with actual API call
-    setTimeout(() => {
-      const mockData: LeaderboardEntry[] = [
-        {
-          id: '1',
-          username: 'John Doe',
-          email: 'john@example.com',
-          totalFocusMinutes: 480,
-          totalPomodoros: 16,
-          averageSessionLength: 30,
-          streakDays: 7,
-          rank: 1
-        },
-        {
-          id: '2',
-          username: 'Jane Smith',
-          email: 'jane@example.com',
-          totalFocusMinutes: 360,
-          totalPomodoros: 12,
-          averageSessionLength: 25,
-          streakDays: 5,
-          rank: 2
-        },
-        {
-          id: '3',
-          username: 'Bob Johnson',
-          email: 'bob@example.com',
-          totalFocusMinutes: 300,
-          totalPomodoros: 10,
-          averageSessionLength: 20,
-          streakDays: 3,
-          rank: 3
-        },
-        {
-          id: '4',
-          username: 'Alice Brown',
-          email: 'alice@example.com',
-          totalFocusMinutes: 240,
-          totalPomodoros: 8,
-          averageSessionLength: 18,
-          streakDays: 2,
-          rank: 4
-        }
-      ];
-
-      this.leaderboardByMinutes = [...mockData].sort((a, b) => b.totalFocusMinutes - a.totalFocusMinutes);
-      this.leaderboardByPomodoros = [...mockData].sort((a, b) => b.totalPomodoros - a.totalPomodoros);
-      this.leaderboardByStreaks = [...mockData].sort((a, b) => b.streakDays - a.streakDays);
-
-      // Calculate stats
-      this.totalFocusMinutes = mockData.reduce((sum, entry) => sum + entry.totalFocusMinutes, 0);
-      this.totalPomodoros = mockData.reduce((sum, entry) => sum + entry.totalPomodoros, 0);
-      this.averageSessionLength = Math.round(mockData.reduce((sum, entry) => sum + entry.averageSessionLength, 0) / mockData.length);
-      this.maxStreak = Math.max(...mockData.map(entry => entry.streakDays));
-
-      this.loading = false;
-    }, 1000);
+    // No leaderboard API yet; show empty state. Data will appear when backend supports it.
+    this.leaderboardByMinutes = [];
+    this.leaderboardByPomodoros = [];
+    this.leaderboardByStreaks = [];
+    this.totalFocusMinutes = 0;
+    this.totalPomodoros = 0;
+    this.averageSessionLength = 0;
+    this.maxStreak = 0;
+    this.loading = false;
   }
 } 

@@ -22,6 +22,21 @@
       opacity: 0.9;
     }
 
+    .leaderboard-empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: #666;
+    }
+    .leaderboard-empty-state .leaderboard-empty-icon {
+      font-size: 4rem;
+      width: 4rem;
+      height: 4rem;
+      margin-bottom: 1rem;
+    }
+    .leaderboard-empty-state h3 {
+      margin-bottom: 0.5rem;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

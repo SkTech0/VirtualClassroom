@@ -1,7 +1,10 @@
 <div class="card shadow-sm" style="max-width: 600px; margin: 2rem auto;">
   <div class="card-body">
-    <div style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem;">
-      <div *ngFor="let msg of messages">
+    <div #messagesContainer class="chat-messages" style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem;" role="log" aria-live="polite" aria-label="Chat messages">
+      <div *ngIf="messages.length === 0" class="chat-empty" aria-live="polite">
+        <p class="text-muted">No messages yet. Say hi!</p>
+      </div>
+      <div *ngFor="let msg of messages" class="chat-message">
         <strong>{{ msg.user }}:</strong> {{ msg.message }}
         <span class="text-muted small">({{ msg.timestamp | date: 'shortTime' }})</span>
       </div>
@@ -13,6 +16,7 @@
         formControlName="message"
         placeholder="Type a message..."
         autocomplete="off"
+        aria-label="Chat message"
       />
       <app-primary-button [loading]="sending" type="submit">Send</app-primary-button>
     </form>

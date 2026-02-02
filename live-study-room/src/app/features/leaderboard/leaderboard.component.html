@@ -56,8 +56,15 @@
         </mat-card>
       </div>
 
-      <!-- Leaderboard Tabs -->
-      <mat-tab-group class="leaderboard-tabs">
+      <!-- Empty state when no data -->
+      <div *ngIf="!loading && leaderboardByMinutes.length === 0" class="leaderboard-empty-state" aria-live="polite">
+        <mat-icon class="leaderboard-empty-icon">emoji_events</mat-icon>
+        <h3>No leaderboard data yet</h3>
+        <p>Leaderboard data will appear as you and your study group complete Pomodoro sessions.</p>
+      </div>
+
+      <!-- Leaderboard Tabs (only when we have data) -->
+      <mat-tab-group class="leaderboard-tabs" *ngIf="!loading && leaderboardByMinutes.length > 0">
         <mat-tab label="Focus Minutes">
           <div class="tab-content">
             <div class="leaderboard-list">

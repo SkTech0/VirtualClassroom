@@ -117,13 +117,16 @@
                       <div class="timer-display">
                         <span class="timer">{{ formatTime(pomodoroTime) }}</span>
                         <div class="timer-controls">
-                          <button mat-fab color="primary" (click)="startPomodoro()" *ngIf="!pomodoroActive">
+                          <button mat-fab color="primary" (click)="startPomodoro()" *ngIf="!pomodoroActive && isPomodoroAtStart()" matTooltip="Start (syncs for whole room)">
                             <mat-icon>play_arrow</mat-icon>
                           </button>
-                          <button mat-fab color="warn" (click)="pausePomodoro()" *ngIf="pomodoroActive">
+                          <button mat-fab color="primary" (click)="resumePomodoro()" *ngIf="!pomodoroActive && !isPomodoroAtStart()" matTooltip="Resume (syncs for whole room)">
+                            <mat-icon>play_arrow</mat-icon>
+                          </button>
+                          <button mat-fab color="warn" (click)="pausePomodoro()" *ngIf="pomodoroActive" matTooltip="Pause">
                             <mat-icon>pause</mat-icon>
                           </button>
-                          <button mat-fab color="accent" (click)="resetPomodoro()">
+                          <button mat-fab color="accent" (click)="resetPomodoro()" matTooltip="Reset to full duration">
                             <mat-icon>refresh</mat-icon>
                           </button>
                         </div>
@@ -146,7 +149,12 @@
               <div class="tab-content">
                 <mat-card class="leaderboard-card">
                   <mat-card-content>
-                    <mat-list>
+                    <div *ngIf="leaderboard.length === 0" class="leaderboard-empty" aria-live="polite">
+                      <mat-icon class="empty-icon">emoji_events</mat-icon>
+                      <p>No leaderboard data yet.</p>
+                      <p class="text-muted small">Complete Pomodoro sessions in this room to see rankings here.</p>
+                    </div>
+                    <mat-list *ngIf="leaderboard.length > 0">
                       <mat-list-item *ngFor="let entry of leaderboard; let i = index" class="leaderboard-item">
                         <div class="rank">{{ i + 1 }}</div>
                         <div class="user-avatar">

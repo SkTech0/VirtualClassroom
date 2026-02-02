@@ -85,7 +85,19 @@
     .room-code {
       margin: 1rem 0;
     }
-
+    .room-participants {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    .room-participants .participant-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
     .room-status {
       margin-bottom: 1rem;
     }

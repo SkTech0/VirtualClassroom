@@ -11,7 +11,7 @@
         <mat-card-subtitle>Room: {{ roomCode }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <p class="pre-join-text">Allow camera and microphone to join the video call. You'll see yourself and others in the room.</p>
+        <p class="pre-join-text">Allow camera and microphone to join the video call. You'll see yourself and others in the room. If the browser prompts you, click "Allow" for the best experience.</p>
         <div class="pre-join-actions">
           <button mat-raised-button color="primary" (click)="onJoinVideoCallClick()" class="join-button">
             <mat-icon>videocam</mat-icon>
@@ -196,6 +196,17 @@
 
           </mat-card>
 
+        </div>
+
+        <!-- Waiting for others (when alone in call) -->
+        <div *ngIf="isInCall && getRemoteParticipants().length === 0" class="col-12 waiting-for-others" aria-live="polite">
+          <mat-card class="waiting-card">
+            <mat-card-content>
+              <mat-icon class="waiting-icon">people</mat-icon>
+              <p class="waiting-text">Waiting for others...</p>
+              <p class="waiting-hint">Share the room code <strong>{{ roomCode }}</strong> so others can join from the room's Video Call tab.</p>
+            </mat-card-content>
+          </mat-card>
         </div>
 
       </div>

@@ -49,6 +49,11 @@ export class LoginComponent {
     });
   }
 
+  onForgotPassword(event: Event) {
+    event.preventDefault();
+    this.snackBar.open('To reset your password, please contact support or use your identity provider.', 'Close', { duration: 5000 });
+  }
+
   onSubmit() {
     if (this.form.invalid) return;
     
@@ -67,8 +72,8 @@ export class LoginComponent {
       next: () => {
         this.loading = false;
         this.snackBar.open('Welcome back!', 'Close', { duration: 2000 });
-        const returnUrl = this.route.snapshot.queryParams['returnUrl'];
-        const path = (returnUrl && !returnUrl.startsWith('http')) ? returnUrl : '/room';
+        const returnUrl = this.route.snapshot.queryParams['returnUrl'] as string | undefined;
+        const path = (returnUrl && returnUrl.startsWith('/')) ? returnUrl : '/room';
         // Defer navigation so token is committed to storage before protected routes load
         setTimeout(() => this.router.navigateByUrl(path), 0);
       },

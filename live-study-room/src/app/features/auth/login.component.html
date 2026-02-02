@@ -20,6 +20,9 @@
         <mat-error *ngIf="form.get('password')?.hasError('required')">Password is required</mat-error>
         <mat-error *ngIf="form.get('password')?.hasError('minlength')">Password must be at least 6 characters</mat-error>
       </mat-form-field>
+      <div class="text-end mb-2">
+        <a href="#" class="link small" (click)="onForgotPassword($event)">Forgot password?</a>
+      </div>
       <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || loading" class="w-100 d-flex align-items-center justify-content-center gap-2">
         <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
         <span *ngIf="!loading">Sign In</span>

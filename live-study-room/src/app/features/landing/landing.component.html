@@ -147,7 +147,7 @@
         <div class="container">
           <div class="footer-content">
             <div class="footer-section">
-              <h3>Live Study Room</h3>
+              <h3>Virtual Classroom</h3>
               <p>Empowering students to study together, anywhere, anytime.</p>
             </div>
             <div class="footer-section">
@@ -162,15 +162,15 @@
             <div class="footer-section">
               <h4>Support</h4>
               <ul>
-                <li>Help Center</li>
-                <li>Contact Us</li>
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
+                <li><a routerLink="/landing" fragment="help" class="footer-link">Help Center</a></li>
+                <li><a routerLink="/landing" fragment="contact" class="footer-link">Contact Us</a></li>
+                <li><a routerLink="/landing" fragment="privacy" class="footer-link">Privacy Policy</a></li>
+                <li><a routerLink="/landing" fragment="terms" class="footer-link">Terms of Service</a></li>
               </ul>
             </div>
           </div>
           <div class="footer-bottom">
-            <p>&copy; 2024 Live Study Room. All rights reserved.</p>
+            <p>&copy; {{ currentYear }} Virtual Classroom. All rights reserved.</p>
           </div>
         </div>
       </footer>

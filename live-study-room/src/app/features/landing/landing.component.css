@@ -344,6 +344,14 @@
     .footer-section ul li:hover {
       color: #667eea;
     }
+    .footer-link {
+      color: #ccc;
+      text-decoration: none;
+    }
+    .footer-link:hover {
+      color: #667eea;
+      text-decoration: underline;
+    }
 
     .footer-bottom {
       border-top: 1px solid #555;

@@ -42,8 +42,9 @@
             <form [formGroup]="joinForm" (ngSubmit)="onJoinRoom()">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Room Code</mat-label>
-                <input matInput formControlName="code" placeholder="Enter 6-digit code" maxlength="6" />
+                <input matInput formControlName="code" placeholder="e.g. ABC123 (6 characters)" maxlength="6" aria-describedby="room-code-hint" />
                 <mat-icon matSuffix>meeting_room</mat-icon>
+                <mat-hint id="room-code-hint">Letters or numbers; case doesn't matter</mat-hint>
               </mat-form-field>
               <button mat-raised-button color="accent" type="submit" [disabled]="joinForm.invalid || joining" class="full-width">
                 <mat-spinner diameter="20" *ngIf="joining"></mat-spinner>
@@ -72,6 +73,10 @@
                   <mat-icon>code</mat-icon>
                   {{ room.code }}
                 </mat-chip>
+              </div>
+              <div class="room-participants" *ngIf="room.participantCount != null">
+                <mat-icon class="participant-icon">group</mat-icon>
+                <span>{{ room.participantCount }} {{ room.participantCount === 1 ? 'participant' : 'participants' }}</span>
               </div>
               <div class="room-status">
                 <mat-chip [color]="room.isActive ? 'accent' : 'warn'" selected>

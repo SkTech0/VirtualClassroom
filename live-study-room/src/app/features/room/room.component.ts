@@ -52,6 +52,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { takeUntil, filter, skip } from 'rxjs/operators';
 
 import { ChatComponent } from '../chat/chat.component';
+import { ConfirmModalComponent } from '../../shared/modal/confirm-modal.component';
 import { environment } from '../../../environments/environment';
 
 
@@ -130,7 +131,9 @@ interface Participant {
 
     MatDialogModule,
 
-    ChatComponent
+    ChatComponent,
+
+    ConfirmModalComponent
 
   ],
 
@@ -296,6 +299,37 @@ export class RoomComponent implements OnInit, OnDestroy {
 
     this.signalR.on('userdisconnected', () => this.loadParticipants());
 
+    // Shared Pomodoro: sync with hub so everyone in the room sees the same timer
+    this.signalR.on<number>('TimerStarted', (durationSeconds: number) => {
+      this.pomodoroTime = durationSeconds;
+      this.pomodoroActive = true;
+      clearInterval(this.pomodoroInterval);
+      this.pomodoroInterval = setInterval(() => this.tickPomodoro(), 1000);
+    });
+    this.signalR.on('TimerPaused', () => {
+      this.pomodoroActive = false;
+      clearInterval(this.pomodoroInterval);
+    });
+    this.signalR.on('TimerResumed', () => {
+      this.pomodoroActive = true;
+      clearInterval(this.pomodoroInterval);
+      this.pomodoroInterval = setInterval(() => this.tickPomodoro(), 1000);
+    });
+    this.signalR.on('TimerReset', () => {
+      this.pomodoroActive = false;
+      clearInterval(this.pomodoroInterval);
+      this.setPomodoroMode(this.pomodoroMode);
+    });
+  }
+
+  private tickPomodoro() {
+    if (this.pomodoroTime > 0) {
+      this.pomodoroTime--;
+    } else {
+      clearInterval(this.pomodoroInterval);
+      this.pomodoroActive = false;
+      this.snackBar.open('Pomodoro session completed!', 'Close', { duration: 5000 });
+    }
   }
 
  
@@ -329,79 +363,54 @@ export class RoomComponent implements OnInit, OnDestroy {
  
 
   loadLeaderboard() {
-
-    this.leaderboard = [
-
-      { username: 'John Doe', focusMinutes: 120, pomodoros: 4 },
-
-      { username: 'Jane Smith', focusMinutes: 90, pomodoros: 3 },
-
-      { username: 'Bob Johnson', focusMinutes: 60, pomodoros: 2 }
-
-    ];
-
+    // Room leaderboard: no API yet; show empty state. Data will come from Pomodoro sessions.
+    this.leaderboard = [];
   }
 
  
 
   startPomodoro() {
-
-    this.pomodoroActive = true;
-
-    this.pomodoroInterval = setInterval(() => {
-
-      if (this.pomodoroTime > 0) {
-
-        this.pomodoroTime--;
-
-      } else {
-
-        this.pausePomodoro();
-
-        this.snackBar.open('Pomodoro session completed!', 'Close', { duration: 5000 });
-
-      }
-
-    }, 1000);
-
+    if (!this.room?.code) return;
+    this.signalR.invoke('StartTimer', this.room.code, this.pomodoroTime).catch(() => {
+      this.snackBar.open('Could not sync timer. Try again.', 'Close', { duration: 3000 });
+    });
   }
-
- 
 
   pausePomodoro() {
-
-    this.pomodoroActive = false;
-
+    if (!this.room?.code) return;
     clearInterval(this.pomodoroInterval);
-
+    this.pomodoroActive = false;
+    this.signalR.invoke('PauseTimer', this.room.code).catch(() => {});
   }
 
- 
+  resumePomodoro() {
+    if (!this.room?.code) return;
+    this.signalR.invoke('ResumeTimer', this.room.code).catch(() => {});
+  }
 
   resetPomodoro() {
-
-    this.pausePomodoro();
-
+    if (!this.room?.code) return;
+    clearInterval(this.pomodoroInterval);
+    this.pomodoroActive = false;
     this.setPomodoroMode(this.pomodoroMode);
-
+    this.signalR.invoke('ResetTimer', this.room.code).catch(() => {});
   }
 
  
 
   setPomodoroMode(mode: string) {
-
     this.pomodoroMode = mode;
-
     switch (mode) {
-
       case 'work': this.pomodoroTime = 1500; break;
-
       case 'break': this.pomodoroTime = 300; break;
-
       case 'longBreak': this.pomodoroTime = 900; break;
-
     }
+  }
 
+  /** True if timer is at full duration for current mode (so "Start" not "Resume") */
+  isPomodoroAtStart(): boolean {
+    const full = this.pomodoroMode === 'work' ? 1500 : this.pomodoroMode === 'break' ? 300 : 900;
+    return this.pomodoroTime >= full;
   }
 
  
@@ -451,17 +460,25 @@ export class RoomComponent implements OnInit, OnDestroy {
  
 
   shareRoom() {
-
-    if (this.room) {
-
-      const url = `${window.location.origin}/room/${this.room.code}`;
-
-      navigator.clipboard.writeText(url);
-
-      this.snackBar.open('Room link copied to clipboard!', 'Close', { duration: 2000 });
-
+    if (!this.room) return;
+    const url = `${window.location.origin}/room/${this.room.code}`;
+    const title = this.room.subject || 'Study room';
+    const text = `Join my study room "${title}" (code: ${this.room.code})`;
+    if (typeof navigator.share === 'function') {
+      navigator.share({ title, text, url }).then(() => {
+        this.snackBar.open('Room link shared!', 'Close', { duration: 2000 });
+      }).catch(() => {
+        this.fallbackCopyShare(url);
+      });
+    } else {
+      this.fallbackCopyShare(url);
     }
+  }
 
+  private fallbackCopyShare(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      this.snackBar.open('Room link copied to clipboard!', 'Close', { duration: 2000 });
+    });
   }
 
  
@@ -526,29 +543,23 @@ export class RoomComponent implements OnInit, OnDestroy {
  
 
   leaveRoom() {
-
-    if (this.room) {
-
-      this.api.post(API_ENDPOINTS.rooms.leave, { roomCode: this.room.code }).subscribe({
-
+    if (!this.room) return;
+    const dialogRef = this.dialog.open(ConfirmModalComponent, {
+      data: { message: 'Are you sure you want to leave this room? You can rejoin with the room code.' },
+      width: '360px'
+    });
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.api.post(API_ENDPOINTS.rooms.leave, { roomCode: this.room!.code }).subscribe({
         next: () => {
-
           this.snackBar.open('Left room successfully', 'Close', { duration: 2000 });
-
           this.router.navigate(['/room']);
-
         },
-
         error: err => {
-
-          this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to leave room'), 'Close', { duration: 2000 });
-
+          this.snackBar.open(ApiService.getApiErrorMessage(err, 'Failed to leave room'), 'Close', { duration: 3000 });
         }
-
       });
-
-    }
-
+    });
   }
 
 }
