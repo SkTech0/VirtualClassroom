@@ -15,7 +15,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { PrimaryButtonComponent } from '../../shared/button/primary-button.component';
 
 interface Room {
   id: string;
@@ -41,8 +40,7 @@ interface Room {
     MatChipsModule,
     MatDialogModule,
     MatDividerModule,
-    MatProgressSpinnerModule,
-    PrimaryButtonComponent
+    MatProgressSpinnerModule
   ],
   templateUrl: './room-list.component.html',
   styleUrls: ['./room-list.component.css'],

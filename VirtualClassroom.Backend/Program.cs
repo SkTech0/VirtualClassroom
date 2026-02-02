@@ -221,6 +221,11 @@ app.Use(async (ctx, next) =>
             ctx.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             await ctx.Response.WriteAsJsonAsync(new { type = "BadRequest", status = 400, title = "Bad Request", message = opEx.Message });
         }
+        else if (err is UnauthorizedAccessException authEx)
+        {
+            ctx.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            await ctx.Response.WriteAsJsonAsync(new { type = "Unauthorized", status = 401, title = "Unauthorized", message = authEx.Message });
+        }
         else
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.InternalServerError;

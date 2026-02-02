@@ -484,7 +484,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
     if (this.room) {
 
-      this.signalR.invoke('KnockKnock', this.room.code, 'all');
+      this.signalR.invoke('SendKnockKnock', this.room.code, 'all', this.auth.getUserFromStorage()?.username ?? 'Unknown');
 
       this.snackBar.open('Knock knock sent!', 'Close', { duration: 2000 });
 

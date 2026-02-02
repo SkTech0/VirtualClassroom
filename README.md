@@ -36,9 +36,9 @@ VirtualClassroom/
 
 ## Prerequisites
 
-- .NET 8.0 SDK
+- .NET 10 SDK
 - Node.js 18+ and npm
-- Angular CLI (`npm install -g @angular/cli`)
+- Angular CLI 19 (`npm install -g @angular/cli@19`)
 
 ## Getting Started
 
@@ -88,17 +88,17 @@ The frontend will be available at `http://localhost:4200`.
 ## Development
 
 ### Backend Technologies
-- .NET 8.0
+- .NET 10
 - Entity Framework Core
 - SignalR for real-time communication
 - JWT authentication
-- SQL Server (LocalDB for development)
+- PostgreSQL (or InMemory for development)
 
 ### Frontend Technologies
-- Angular 17
-- TypeScript
+- Angular 19
+- TypeScript 5.5+
 - SignalR client
-- Angular Material (if used for UI components)
+- Angular Material
 
 ## API Endpoints
 

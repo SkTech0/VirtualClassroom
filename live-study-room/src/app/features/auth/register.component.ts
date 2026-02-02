@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
+import { ApiService } from '../../core/services/api.service';
 
 @Component({
   selector: 'app-register',
@@ -86,7 +87,7 @@ export class RegisterComponent {
       },
       error: err => {
         this.loading = false;
-        this.error = err.error?.error || 'Registration failed. Please try again.';
+        this.error = ApiService.getApiErrorMessage(err, 'Registration failed. Please try again.');
       },
       complete: () => {
         this.loading = false;

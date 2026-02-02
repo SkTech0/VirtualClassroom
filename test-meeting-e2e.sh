@@ -50,7 +50,7 @@ fi
 echo "OK: User B joined room"
 
 # Optional: GET room by code
-ROOM_GET=$(curl -s -X GET "$BASE/rooms/code/$CODE" -H "Authorization: Bearer $TOKEN_A")
+ROOM_GET=$(curl -s -X GET "$BASE/rooms/$CODE" -H "Authorization: Bearer $TOKEN_A")
 SUBJECT=$(echo "$ROOM_GET" | jq -r '.subject // empty')
 if [ -z "$SUBJECT" ]; then
   echo "WARN: GET room by code failed or empty"
