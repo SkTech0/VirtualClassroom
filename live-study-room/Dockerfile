@@ -15,6 +15,8 @@ RUN npm run build:railway
 
 FROM nginx:alpine AS final
 COPY --from=build /app/dist/live-study-room/browser /usr/share/nginx/html
-COPY nginx.railway.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+COPY nginx.railway.conf.template /etc/nginx/conf.d/default.conf.template
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+EXPOSE 8080
+CMD ["/docker-entrypoint.sh"]

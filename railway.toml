@@ -1,0 +1,13 @@
+# Backend service: use this when Root Directory is repo root (empty).
+# Build context = repo root so VirtualClassroom.sln is included.
+# In Railway: Backend service → Root Directory = leave EMPTY.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.backend"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

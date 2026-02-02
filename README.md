@@ -162,9 +162,10 @@ The app is ready for Railway with two services: **backend** (API + SignalR) and 
 ### 1. Backend service
 
 1. In Railway, create a new project and add a service.
-2. Connect the repo. Set **Root Directory** to the **repo root** (leave empty — do **not** set it to `VirtualClassroom.Backend`).
-3. **Build:** set **Dockerfile Path** to `Dockerfile.backend`. This file is at the repo root so the build context includes `VirtualClassroom.sln`.
-4. **Variables** (set in Railway dashboard; use **Variables** tab):
+2. Connect the repo.
+3. **Critical:** Set **Root Directory** to **empty** (clear the field). If it is set to `VirtualClassroom.Backend`, the build will fail with "Project file does not exist: VirtualClassroom.sln" because the build context must be the repo root.
+4. **Build:** With root empty, Railway uses `railway.toml` at repo root and builds with `Dockerfile.backend`; the build context is the full repo so `VirtualClassroom.sln` is included. (Or set **Dockerfile Path** to `Dockerfile.backend` in service settings.)
+5. **Variables** (set in Railway dashboard; use **Variables** tab):
    - `ASPNETCORE_ENVIRONMENT` = `Production`
    - `PORT` — set automatically by Railway
    - `ConnectionStrings__DefaultConnection` — **Npgsql format** (see below), not a URL
@@ -174,11 +175,11 @@ The app is ready for Railway with two services: **backend** (API + SignalR) and 
    - `JwtSettings__Audience` = `VirtualClassroomAudience`
    - `Cors__Origins__0` = your frontend URL (e.g. `https://your-frontend.up.railway.app`)
    - `UseInMemory` = `false` (use `true` only for quick test without a database)
-5. Add **PostgreSQL** (and optionally **Redis**) from Railway add-ons.
+6. Add **PostgreSQL** (and optionally **Redis**) from Railway add-ons.
    - **PostgreSQL:** Railway gives a `DATABASE_URL` (URL). The app expects **Npgsql format**:
      `Host=hostname;Port=5432;Database=railway;Username=postgres;Password=YOUR_PASSWORD`
      Use your Postgres service variables: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` to build this string (e.g. `Host=${{PGHOST}};Port=${{PGPORT}};Database=${{PGDATABASE}};Username=${{PGUSER}};Password=${{PGPASSWORD}}` if Railway supports variable refs, or paste the values manually).
-6. Deploy. Note the backend URL (e.g. `https://your-backend.up.railway.app`). Use it for the frontend in step 2.
+7. Deploy. Note the backend URL (e.g. `https://your-backend.up.railway.app`). Use it for the frontend in step 2.
 
 ### 2. Frontend service
 

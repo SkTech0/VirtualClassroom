@@ -1,0 +1,14 @@
+# Railway: LISTEN_PORT is replaced at startup with $PORT (default 8080).
+server {
+    listen LISTEN_PORT;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+}
