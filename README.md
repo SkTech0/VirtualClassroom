@@ -195,7 +195,7 @@ The app is ready for Railway with two services: **backend** (API + SignalR) and 
 
 - Open the frontend URL; sign up and use rooms, chat, Pomodoro, and video.
 - Backend health: `https://YOUR-BACKEND.railway.app/health`
-- If using PostgreSQL, run migrations once (e.g. locally with `DATABASE_URL` set to Railway Postgres, or use Railway’s shell and `dotnet ef database update`).
+- If register/login returns 500 or 503, ensure DB connection and migrations (see Deploy section). If using PostgreSQL, run migrations once (e.g. locally with `DATABASE_URL` set to Railway Postgres, or use Railway’s shell and `dotnet ef database update`).
 
 ## Contributing
 

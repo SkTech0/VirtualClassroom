@@ -214,6 +214,9 @@ app.Use(async (ctx, next) =>
     catch (Exception ex)
     {
         var err = ex is AggregateException agg ? agg.GetBaseException() : ex;
+        var logger = ctx.RequestServices.GetRequiredService<Serilog.ILogger>();
+        logger.Error(err, "Unhandled exception: {Path}", ctx.Request.Path);
+
         ctx.Response.Clear();
         ctx.Response.ContentType = "application/json";
         if (err is FluentValidation.ValidationException validationEx)
@@ -232,6 +235,12 @@ app.Use(async (ctx, next) =>
             ctx.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             await ctx.Response.WriteAsJsonAsync(new { type = "Unauthorized", status = 401, title = "Unauthorized", message = authEx.Message });
         }
+        else if (IsDatabaseException(err))
+        {
+            ctx.Response.StatusCode = (int)HttpStatusCode.ServiceUnavailable;
+            var msg = app.Environment.IsDevelopment() ? err.Message : "Database unavailable. Check connection and migrations.";
+            await ctx.Response.WriteAsJsonAsync(new { type = "ServiceUnavailable", status = 503, title = "Service Unavailable", message = msg, detail = app.Environment.IsDevelopment() ? err.ToString() : (object?)null });
+        }
         else
         {
             ctx.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
@@ -240,6 +249,16 @@ app.Use(async (ctx, next) =>
         }
     }
 });
+
+static bool IsDatabaseException(Exception ex)
+{
+    var t = ex.GetType();
+    var name = t.FullName ?? t.Name;
+    return name.StartsWith("Npgsql.", StringComparison.Ordinal)
+        || name.StartsWith("Microsoft.EntityFrameworkCore.", StringComparison.Ordinal)
+        || (ex.InnerException != null && IsDatabaseException(ex.InnerException));
+}
+
 app.UseRateLimiter();
 app.UseCors("Default");
 app.UseRouting();
