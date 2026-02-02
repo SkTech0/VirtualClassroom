@@ -166,12 +166,14 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var healthBuilder = builder.Services.AddHealthChecks();
+// Liveness: used by Railway/orchestrators to know the process is up (no DB/Redis).
+healthBuilder.AddCheck("live", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: new[] { "live" });
 if (useInMemory)
-    healthBuilder.AddDbContextCheck<ApplicationDbContext>("database");
+    healthBuilder.AddDbContextCheck<ApplicationDbContext>("database", tags: new[] { "ready" });
 else
 {
-    healthBuilder.AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres");
-    healthBuilder.AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379", name: "redis");
+    healthBuilder.AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres", tags: new[] { "ready" });
+    healthBuilder.AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379", name: "redis", tags: new[] { "ready" });
 }
 
 var app = builder.Build();
@@ -259,21 +261,32 @@ if (allowSwagger)
 
 app.MapControllers();
 app.MapHub<RoomHub>("/hubs/room");
-app.MapHealthChecks("/health");
+// /health = liveness only (Railway/orchestrators); /health/ready = postgres + redis.
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = reg => reg.Tags.Contains("live") });
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = reg => reg.Tags.Contains("ready") });
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (useInMemory)
-        await db.Database.EnsureCreatedAsync();
-    else
-        await db.Database.MigrateAsync();
-
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Microsoft.AspNetCore.Identity.IdentityRole<Guid>>>();
-    foreach (var role in new[] { "Admin", "Teacher", "Student" })
+    try
     {
-        if (!await roleManager.RoleExistsAsync(role))
-            await roleManager.CreateAsync(new Microsoft.AspNetCore.Identity.IdentityRole<Guid>(role));
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        if (useInMemory)
+            await db.Database.EnsureCreatedAsync();
+        else
+            await db.Database.MigrateAsync();
+
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Microsoft.AspNetCore.Identity.IdentityRole<Guid>>>();
+        foreach (var role in new[] { "Admin", "Teacher", "Student" })
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new Microsoft.AspNetCore.Identity.IdentityRole<Guid>(role));
+        }
+    }
+    catch (Exception ex)
+    {
+        // Log but do not block startup so Railway healthcheck can succeed; fix DB config and redeploy.
+        var logger = scope.ServiceProvider.GetRequiredService<Serilog.ILogger>();
+        logger.Warning(ex, "Database migration or seed failed; app will start but may be degraded.");
     }
 }
 
