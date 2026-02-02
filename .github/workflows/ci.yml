@@ -1,0 +1,76 @@
+# Enterprise CI: build, test, security scan, optional Docker build
+name: CI
+
+on:
+  push:
+    branches: [master, main, feature/**]
+  pull_request:
+    branches: [master, main]
+
+env:
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore VirtualClassroom.sln
+
+      - name: Build
+        run: dotnet build VirtualClassroom.sln --no-restore -c Release
+
+      - name: Test
+        run: dotnet test VirtualClassroom.sln --no-build -c Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: Upload coverage (optional)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: "**/coverage*.xml"
+          retention-days: 7
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore VirtualClassroom.sln
+
+      - name: OWASP dependency check (list vulnerable packages)
+        run: |
+          dotnet list package --vulnerable --include-transitive 2>/dev/null || true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    needs: [build-and-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: VirtualClassroom.Backend/Dockerfile
+          push: false
+          tags: virtualclassroom-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

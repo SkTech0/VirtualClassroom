@@ -7,6 +7,7 @@ using VirtualClassroom.Application.Common.Interfaces;
 using VirtualClassroom.Infrastructure.Auth;
 using VirtualClassroom.Infrastructure.Identity;
 using VirtualClassroom.Infrastructure.Persistence;
+using VirtualClassroom.Infrastructure.Notifications;
 using VirtualClassroom.Infrastructure.Persistence.Repositories;
 using VirtualClassroom.Infrastructure.Video;
 
@@ -73,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IRoomCloser, RoomCloser>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ILiveKitService, LiveKitService>();
+        services.AddSingleton<IEmailSender, NoOpEmailSender>();
 
         return services;
     }

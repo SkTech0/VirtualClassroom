@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Backend", "VirtualClassroom.Backend\VirtualClassroom.Backend.csproj", "{9ADD481C-2424-4AF7-7002-B6005B6F5DFE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Tests.Unit", "VirtualClassroom.Tests.Unit\VirtualClassroom.Tests.Unit.csproj", "{C3EC021A-5F9E-49C6-A1FA-B8EF73989628}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualClassroom.Tests.Integration", "VirtualClassroom.Tests.Integration\VirtualClassroom.Tests.Integration.csproj", "{D4FD031B-6F0F-5AD7-B2FB-C9F084090739}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -83,6 +85,10 @@ Global
 		{C3EC021A-5F9E-49C6-A1FA-B8EF73989628}.Release|x64.Build.0 = Release|Any CPU
 		{C3EC021A-5F9E-49C6-A1FA-B8EF73989628}.Release|x86.ActiveCfg = Release|Any CPU
 		{C3EC021A-5F9E-49C6-A1FA-B8EF73989628}.Release|x86.Build.0 = Release|Any CPU
+		{D4FD031B-6F0F-5AD7-B2FB-C9F084090739}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4FD031B-6F0F-5AD7-B2FB-C9F084090739}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4FD031B-6F0F-5AD7-B2FB-C9F084090739}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4FD031B-6F0F-5AD7-B2FB-C9F084090739}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

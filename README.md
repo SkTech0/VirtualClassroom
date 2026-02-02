@@ -75,9 +75,29 @@ Backend will be at http://localhost:5275. Then run the frontend with `ng serve` 
 
 ---
 
+## Enterprise stack (branch `feature/enterprise-stack`)
+
+The branch `feature/enterprise-stack` adds 13 enterprise-oriented improvements:
+
+- **CI/CD** — GitHub Actions: build, test, dependency check, Docker build on main
+- **Resilience** — Polly retry + circuit breaker for a named `HttpClient` ("Resilient")
+- **Secrets** — User Secrets in Development; production via env or Key Vault (see runbook)
+- **Background jobs** — Hangfire with Redis (opt-in via `Hangfire:Enabled`)
+- **Observability** — Serilog file + optional Seq; OpenTelemetry OTLP (Jaeger, etc.)
+- **Integration tests** — `VirtualClassroom.Tests.Integration` with `WebApplicationFactory`
+- **Security** — Audit middleware (who/what/when), CSP and Permissions-Policy headers
+- **Feature flags** — Microsoft.FeatureManagement (config-based)
+- **Notifications** — `IEmailSender` abstraction (default: NoOp; swap for SendGrid/SMTP)
+- **Kubernetes** — HPA (`k8s/hpa.yaml`) and NetworkPolicy (`k8s/network-policy.yaml`)
+- **Documentation** — Runbook (`docs/runbook.md`) and ADR (`docs/ADR-001-enterprise-stack.md`)
+
+See `docs/runbook.md` for operations and `docs/ADR-001-enterprise-stack.md` for decisions.
+
+---
+
 ## Testing
 
-### Unit tests (backend)
+### Unit and integration tests (backend)
 
 From repo root:
 
@@ -85,10 +105,16 @@ From repo root:
 dotnet test VirtualClassroom.Tests.Unit/VirtualClassroom.Tests.Unit.csproj
 ```
 
-Covers Auth, Rooms, Pomodoro, Video handlers and validators, `ValidationBehavior`, and `InMemoryAuthTokenService`. With coverage:
+Covers Auth, Rooms, Pomodoro, Video handlers and validators, `ValidationBehavior`, and `InMemoryAuthTokenService`. Integration tests (health endpoints) live in `VirtualClassroom.Tests.Integration`. Run all tests:
 
 ```bash
-dotnet test VirtualClassroom.Tests.Unit/VirtualClassroom.Tests.Unit.csproj --collect:"XPlat Code Coverage"
+dotnet test VirtualClassroom.sln
+```
+
+With coverage:
+
+```bash
+dotnet test VirtualClassroom.sln --collect:"XPlat Code Coverage"
 ```
 
 ### Manual E2E

@@ -1,0 +1,33 @@
+# Enterprise: Network policies - restrict pod-to-pod and ingress/egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: virtualclassroom-api-netpol
+  namespace: virtualclassroom
+spec:
+  podSelector:
+    matchLabels:
+      app: virtualclassroom-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from ingress controller (adjust selector for your ingress)
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow egress to same namespace (postgres, redis, etc.)
+  - to:
+    - podSelector: {}
+  # Allow DNS and external HTTPS (adjust CIDR exceptions per cluster)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 443

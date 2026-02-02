@@ -10,7 +10,15 @@ using OpenTelemetry.Trace;
 using Serilog;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Hangfire;
+using Hangfire.Redis.StackExchange;
+using Microsoft.FeatureManagement;
+using OpenTelemetry.Exporter;
+using Polly;
+using Polly.Extensions.Http;
 using VirtualClassroom.Api.Hubs;
+using VirtualClassroom.Api.Infrastructure;
+using VirtualClassroom.Api.Middleware;
 using VirtualClassroom.Application;
 using VirtualClassroom.Infrastructure;
 using VirtualClassroom.Infrastructure.Identity;
@@ -18,30 +26,56 @@ using VirtualClassroom.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Enterprise: User Secrets in Development (avoid committing secrets)
+if (builder.Environment.IsDevelopment())
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
+
 // Railway and similar platforms set PORT; use it so the app listens on the correct port.
 var port = Environment.GetEnvironmentVariable("PORT");
 builder.WebHost.UseUrls(port is { Length: > 0 } ? $"http://+:{port}" : "http://+:8080");
 
+// Enterprise: Serilog with Console, File, and optional Seq
 builder.Host.UseSerilog((ctx, lc) =>
 {
     lc.ReadFrom.Configuration(ctx.Configuration)
       .Enrich.FromLogContext()
       .WriteTo.Console();
+    if (!string.IsNullOrWhiteSpace(ctx.Configuration["Serilog:File:Path"]))
+        lc.WriteTo.File(ctx.Configuration["Serilog:File:Path"]!, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7);
+    var seqUrl = ctx.Configuration["Serilog:Seq:ServerUrl"];
+    if (!string.IsNullOrWhiteSpace(seqUrl))
+        lc.WriteTo.Seq(seqUrl!);
 });
 
+// Enterprise: OpenTelemetry with optional OTLP exporter (Jaeger, etc.)
+var otlpEndpoint = builder.Configuration["OpenTelemetry:Otlp:Endpoint"];
 builder.Services.AddOpenTelemetry()
     .WithTracing(t =>
     {
         t.AddAspNetCoreInstrumentation()
          .AddHttpClientInstrumentation()
          .AddSource("VirtualClassroom");
+        if (!string.IsNullOrEmpty(otlpEndpoint))
+            t.AddOtlpExporter(o => o.Endpoint = new Uri(otlpEndpoint));
     })
     .WithMetrics(m =>
     {
         m.AddAspNetCoreInstrumentation()
-         .AddHttpClientInstrumentation()
-;
+         .AddHttpClientInstrumentation();
+        if (!string.IsNullOrEmpty(otlpEndpoint))
+            m.AddOtlpExporter(o => o.Endpoint = new Uri(otlpEndpoint));
     });
+
+// Enterprise: Resilient HttpClient (Polly retry + circuit breaker)
+static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy() =>
+    HttpPolicyExtensions.HandleTransientHttpError()
+        .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy() =>
+    HttpPolicyExtensions.HandleTransientHttpError()
+        .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+builder.Services.AddHttpClient("Resilient")
+    .AddPolicyHandler(GetRetryPolicy())
+    .AddPolicyHandler(GetCircuitBreakerPolicy());
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -143,6 +177,21 @@ var signalrBuilder = builder.Services.AddSignalR(options =>
 if (!useInMemory)
     signalrBuilder.AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
 
+// Enterprise: Hangfire for background jobs (Redis storage when not in-memory)
+if (!useInMemory && builder.Configuration.GetValue<bool>("Hangfire:Enabled"))
+{
+    var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    builder.Services.AddHangfire(config => config
+        .SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseRedisStorage(redisConn));
+    builder.Services.AddHangfireServer();
+}
+
+// Enterprise: Feature flags (config-based; can swap for LaunchDarkly/Azure App Config)
+builder.Services.AddFeatureManagement();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -196,13 +245,19 @@ if (app.Environment.IsProduction())
     app.UseHsts();
     app.UseHttpsRedirection();
 }
+// Enterprise: Security headers including CSP
 app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Response.Headers["X-Frame-Options"] = "DENY";
     ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    ctx.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';";
+    ctx.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=(self)";
     await next(ctx);
 });
+
+// Enterprise: Audit logging (who, what, when) for compliance
+app.UseMiddleware<AuditLoggingMiddleware>();
 
 // Global exception handling: ValidationException -> 400, InvalidOperationException -> 400, others -> 500
 app.Use(async (ctx, next) =>
@@ -284,6 +339,10 @@ app.MapHub<RoomHub>("/hubs/room");
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = reg => reg.Tags.Contains("live") });
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions { Predicate = reg => reg.Tags.Contains("ready") });
 
+// Enterprise: Hangfire dashboard (when enabled; protect in production with auth)
+if (!useInMemory && builder.Configuration.GetValue<bool>("Hangfire:Enabled"))
+    app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions { Authorization = new[] { new HangfireAuthorizationFilter() } });
+
 using (var scope = app.Services.CreateScope())
 {
     try
@@ -310,3 +369,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Expose entry point for WebApplicationFactory in integration tests.
+public partial class Program { }
