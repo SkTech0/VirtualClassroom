@@ -36,6 +36,9 @@ public class RoomsController(IMediator mediator, IHubContext<RoomHub> hubContext
     {
         var command = new JoinRoomCommand(UserId, request.Code);
         var response = await mediator.Send(command, ct);
+        var code = NormalizeRoomCode(response?.Code ?? request.Code);
+        if (!string.IsNullOrEmpty(code))
+            await hubContext.Clients.Group(code).SendAsync("ParticipantsChanged");
         return Ok(response);
     }
 
@@ -43,10 +46,16 @@ public class RoomsController(IMediator mediator, IHubContext<RoomHub> hubContext
     public async Task<IActionResult> Leave([FromBody] LeaveRoomRequest request, CancellationToken ct)
     {
         var roomCode = request.RoomCode ?? request.Code ?? string.Empty;
+        var code = NormalizeRoomCode(roomCode);
         var command = new LeaveRoomCommand(UserId, roomCode);
         await mediator.Send(command, ct);
+        if (!string.IsNullOrEmpty(code))
+            await hubContext.Clients.Group(code).SendAsync("ParticipantsChanged");
         return NoContent();
     }
+
+    private static string NormalizeRoomCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
 
     [HttpGet("mine")]
     public async Task<IActionResult> GetMine(CancellationToken ct)
@@ -88,7 +97,7 @@ public class RoomsController(IMediator mediator, IHubContext<RoomHub> hubContext
 }
 
 public record CreateRoomRequest(string Subject);
-public record JoinRoomRequest(string Code);
-public record LeaveRoomRequest(string? RoomCode = null, string? Code = null);
-public record KnockKnockRequest(string RoomCode, string TargetUserId);
-public record ReminderRequest(string RoomCode, string Message);
+    public record JoinRoomRequest(string Code);
+    public record LeaveRoomRequest(string? RoomCode = null, string? Code = null);
+    public record KnockKnockRequest(string RoomCode, string TargetUserId);
+    public record ReminderRequest(string RoomCode, string Message);

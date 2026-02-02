@@ -19,7 +19,7 @@ RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:8080
+# PORT is set at runtime by Railway; Program.cs configures UseUrls from PORT.
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1

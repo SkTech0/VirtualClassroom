@@ -54,17 +54,14 @@ VirtualClassroom/
    dotnet restore
    ```
 
-3. Run database migrations:
-   ```bash
-   dotnet ef database update
-   ```
+3. *(Optional)* If using PostgreSQL, run migrations: `dotnet ef database update`. With in-memory (default in Development), skip this.
 
 4. Start the backend server:
    ```bash
    dotnet run
    ```
 
-The backend will be available at `https://localhost:7001` (or the port specified in `launchSettings.json`).
+The backend will be available at **http://localhost:5275** (see `Properties/launchSettings.json`). Swagger at http://localhost:5275 when running.
 
 ### Frontend Setup
 
@@ -84,6 +81,49 @@ The backend will be available at `https://localhost:7001` (or the port specified
    ```
 
 The frontend will be available at `http://localhost:4200`.
+
+## How to test on your local system
+
+### 1. Start the backend
+
+Open a terminal in the project root:
+
+```bash
+cd VirtualClassroom.Backend
+dotnet run
+```
+
+- Backend runs at **http://localhost:5275** (API + SignalR).
+- In Development it uses **in-memory storage** by default (no PostgreSQL or Redis needed). If you see a PostgreSQL error, set `UseInMemory: true` in `appsettings.Development.json`.
+- If port 5275 is already in use, run: `dotnet run --launch-profile httpAlt` (uses port 5276 — then point the frontend to that port; see step 3).
+
+Leave this terminal running.
+
+### 2. Start the frontend
+
+Open a **second** terminal:
+
+```bash
+cd live-study-room
+npm install
+ng serve
+```
+
+- App runs at **http://localhost:4200**.
+- It talks to the backend at **http://localhost:5275** (see `live-study-room/src/environments/environment.ts`). If your backend is on another port (e.g. 5276), change `apiUrl` and `hubUrl` there.
+
+### 3. Test in the browser
+
+1. Open **http://localhost:4200** in your browser.
+2. **Sign up** (e.g. name, email, password) or **Sign in** if you already have an account.
+3. **Rooms:** Create a room (e.g. subject "Math") or join with a 6-character room code.
+4. **In a room:** Use **Chat**, **Pomodoro** (shared timer), and **Video Call** (allow camera/mic when prompted).
+5. **Two users:** To test chat/video with two people, open a second **incognito/private** window (or another browser), sign up a different user, and join the same room with the room code.
+
+### 4. Optional: API / health check
+
+- **Swagger UI:** http://localhost:5275 (when backend is running).
+- **Health:** http://localhost:5275/health.
 
 ## Development
 
@@ -114,6 +154,44 @@ The frontend will be available at `http://localhost:4200`.
 ### Pomodoro
 - `POST /api/pomodoro/start` - Start a Pomodoro session
 - `POST /api/pomodoro/end` - End a Pomodoro session
+
+## Deploy to Railway
+
+The app is ready for Railway with two services: **backend** (API + SignalR) and **frontend** (Angular).
+
+### 1. Backend service
+
+1. In Railway, create a new project and add a service.
+2. Connect the repo and set **Root Directory** to the repo root (or leave empty if deploying from root).
+3. **Build:** Dockerfile — set **Dockerfile Path** to `VirtualClassroom.Backend/Dockerfile` (context = repo root).
+4. **Variables** (set in Railway dashboard; use **Variables** tab):
+   - `ASPNETCORE_ENVIRONMENT` = `Production`
+   - `PORT` — set automatically by Railway
+   - `ConnectionStrings__DefaultConnection` — your PostgreSQL connection string (Railway Postgres add-on gives this)
+   - `ConnectionStrings__Redis` — optional; Redis URL if using Redis for SignalR (e.g. Redis add-on)
+   - `JwtSettings__SecretKey` — a long random secret (e.g. 64+ chars)
+   - `JwtSettings__Issuer` = `VirtualClassroomIssuer`
+   - `JwtSettings__Audience` = `VirtualClassroomAudience`
+   - `Cors__Origins__0` = your frontend URL (e.g. `https://your-frontend.up.railway.app`)
+   - `UseInMemory` = `false` (use `true` only for quick test without a database)
+5. Add **PostgreSQL** (and optionally **Redis**) from Railway add-ons; paste the connection string into `ConnectionStrings__DefaultConnection`.
+6. Deploy. Note the backend URL (e.g. `https://your-backend.up.railway.app`). Use it for the frontend in step 2.
+
+### 2. Frontend service
+
+1. Add a second service in the same (or another) project.
+2. **Root Directory:** `live-study-room`.
+3. **Build:** Dockerfile (uses `live-study-room/Dockerfile`).
+4. **Variables** (build-time; set before deploy):
+   - `API_URL` = `https://YOUR-BACKEND.railway.app/api/v1` (your backend URL + `/api/v1`)
+   - `HUB_URL` = `https://YOUR-BACKEND.railway.app/hubs/room` (your backend URL + `/hubs/room`)
+5. Deploy. The frontend will call the backend at the URLs you set.
+
+### 3. After deploy
+
+- Open the frontend URL; sign up and use rooms, chat, Pomodoro, and video.
+- Backend health: `https://YOUR-BACKEND.railway.app/health`
+- If using PostgreSQL, run migrations once (e.g. locally with `DATABASE_URL` set to Railway Postgres, or use Railway’s shell and `dotnet ef database update`).
 
 ## Contributing
 

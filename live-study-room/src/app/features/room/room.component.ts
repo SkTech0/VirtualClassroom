@@ -131,9 +131,7 @@ interface Participant {
 
     MatDialogModule,
 
-    ChatComponent,
-
-    ConfirmModalComponent
+    ChatComponent
 
   ],
 

@@ -1,0 +1,14 @@
+# Railway backend service
+# Deploy from repo root: railway link && railway up
+# Or add as a service in Railway dashboard and set root directory to VirtualClassroom.Backend (or use Dockerfile from repo root).
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+# If deploying from monorepo root, set: dockerfilePath = "VirtualClassroom.Backend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

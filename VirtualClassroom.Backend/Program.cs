@@ -18,6 +18,10 @@ using VirtualClassroom.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Railway and similar platforms set PORT; use it so the app listens on the correct port.
+var port = Environment.GetEnvironmentVariable("PORT");
+builder.WebHost.UseUrls(port is { Length: > 0 } ? $"http://+:{port}" : "http://+:8080");
+
 builder.Host.UseSerilog((ctx, lc) =>
 {
     lc.ReadFrom.Configuration(ctx.Configuration)

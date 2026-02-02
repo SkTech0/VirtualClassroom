@@ -110,12 +110,8 @@ public class RoomHub : Hub
 
         await Clients.Group(code).SendAsync("UserLeftVideo", userId);
 
-        var videoActive = await GetVideoActiveCount(code);
-        if (videoActive == 0)
-        {
-            await _roomCloser.CloseRoomAsync(code);
-            await Clients.Group(code).SendAsync("RoomClosed");
-        }
+        // Do NOT close the whole room when the last person leaves the video call.
+        // The room (chat, Pomodoro, etc.) stays open; only the video call ends.
     }
 
     private async Task<int> GetVideoActiveCount(string roomCode)

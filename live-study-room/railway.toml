@@ -1,0 +1,9 @@
+# Railway frontend service
+# Set root directory to live-study-room in Railway dashboard.
+# Set variables: API_URL=https://YOUR-BACKEND.railway.app/api/v1, HUB_URL=https://YOUR-BACKEND.railway.app/hubs/room
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]

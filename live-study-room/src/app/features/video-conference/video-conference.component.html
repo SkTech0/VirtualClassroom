@@ -11,7 +11,8 @@
         <mat-card-subtitle>Room: {{ roomCode }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <p class="pre-join-text">Allow camera and microphone to join the video call. You'll see yourself and others in the room. If the browser prompts you, click "Allow" for the best experience.</p>
+        <p class="pre-join-text">Allow camera and microphone to join the video call. You'll see yourself and others in the room. If the browser prompts you, click "Allow".</p>
+        <p class="pre-join-hint text-muted small">If you previously blocked access: click the <strong>lock or camera icon</strong> in the address bar → set Camera and Microphone to <strong>Allow</strong> → refresh and try again.</p>
         <div class="pre-join-actions">
           <button mat-raised-button color="primary" (click)="onJoinVideoCallClick()" class="join-button">
             <mat-icon>videocam</mat-icon>
