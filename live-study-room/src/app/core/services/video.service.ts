@@ -10,6 +10,8 @@ import { SignalRService } from './signalr.service';
 
 import { AuthService } from './auth.service';
 
+import { environment } from '../../../environments/environment';
+
  
 
 export interface VideoPeer {
@@ -51,6 +53,9 @@ export class VideoService {
   private screenShareStream: MediaStream | null = null;
 
   private peers: Map<string, SimplePeer.Instance> = new Map();
+
+  /** Peers we have already applied the remote answer to (avoid "wrong state: stable") */
+  private answerAppliedForPeer: Set<string> = new Set();
 
   private roomCode: string = '';
 
@@ -125,6 +130,22 @@ export class VideoService {
  
 
   private setupSignalRHandlers() {
+
+    const videoEvents = [
+
+      'UserJoinedVideo', 'ExistingVideoParticipants', 'UserLeftVideo',
+
+      'VideoOffer', 'VideoAnswer', 'VideoIceCandidate',
+
+      'VideoToggle', 'videoToggle', 'videotoggle',
+
+      'AudioToggle', 'audioToggle', 'audiotoggle',
+
+      'UserDisconnected', 'userdisconnected'
+
+    ];
+
+    videoEvents.forEach(ev => this.signalR.off(ev));
 
     this.signalR.on('UserJoinedVideo', (data: any) => {
 
@@ -224,19 +245,21 @@ export class VideoService {
 
  
 
-    this.signalR.on('VideoToggle', (data: any) => {
+    const onVideoToggle = (data: any) => this.handleVideoToggle(data?.userId, data?.isVideoEnabled);
+    this.signalR.on('VideoToggle', onVideoToggle);
+    this.signalR.on('videoToggle', onVideoToggle);
+    this.signalR.on('videotoggle', onVideoToggle);
 
-      this.handleVideoToggle(data.userId, data.isVideoEnabled);
+    const onAudioToggle = (data: any) => this.handleAudioToggle(data?.userId, data?.isAudioEnabled);
+    this.signalR.on('AudioToggle', onAudioToggle);
+    this.signalR.on('audioToggle', onAudioToggle);
+    this.signalR.on('audiotoggle', onAudioToggle);
 
-    });
-
- 
-
-    this.signalR.on('AudioToggle', (data: any) => {
-
-      this.handleAudioToggle(data.userId, data.isAudioEnabled);
-
-    });
+    const onUserDisconnected = (userId: string) => {
+      if (userId && userId !== this.currentUserId) this.handleUserLeft(userId);
+    };
+    this.signalR.on('UserDisconnected', onUserDisconnected);
+    this.signalR.on('userdisconnected', onUserDisconnected);
 
   }
 
@@ -269,6 +292,8 @@ export class VideoService {
   async initializeVideo(roomCode: string): Promise<boolean> {
 
     try {
+
+      this.setupSignalRHandlers();
 
       this.roomCode = (roomCode || '').trim().toUpperCase();
 
@@ -324,27 +349,65 @@ export class VideoService {
 
  
 
+  private getPeerConfig(initiator: boolean): SimplePeer.Options {
+
+    const iceServers = (environment as { iceServers?: RTCIceServer[] }).iceServers ?? [
+
+      { urls: 'stun:stun.l.google.com:19302' },
+
+    ];
+
+    return {
+
+      initiator,
+
+      trickle: true,
+
+      stream: this.localStream as MediaStream,
+
+      config: { iceServers },
+
+    };
+
+  }
+
+ 
+
+  private sendSignal(targetUserId: string, data: any): void {
+
+    const t = data?.type;
+
+    if (t === 'offer') {
+
+      this.signalR.invoke('SendVideoOffer', this.roomCode, targetUserId, data);
+
+    } else if (t === 'answer') {
+
+      this.signalR.invoke('SendVideoAnswer', this.roomCode, targetUserId, data);
+
+    } else if (data?.candidate != null) {
+
+      this.signalR.invoke('SendVideoIceCandidate', this.roomCode, targetUserId, data);
+
+    }
+
+  }
+
+ 
+
   private async handleUserJoined(userId: string, username: string, initiator: boolean = true) {
 
     if (this.peers.has(userId) || !this.localStream) return;
 
  
 
-    const peer = new SimplePeer({
-
-      initiator,
-
-      trickle: false,
-
-      stream: this.localStream as MediaStream
-
-    });
+    const peer = new SimplePeer(this.getPeerConfig(initiator));
 
  
 
     peer.on('signal', (data: any) => {
 
-      this.signalR.invoke('SendVideoOffer', this.roomCode, userId, data);
+      this.sendSignal(userId, data);
 
     });
 
@@ -396,23 +459,41 @@ export class VideoService {
 
     if (!this.localStream) return;
 
+    const existingPeer = this.peers.get(from);
+
+    if (existingPeer) {
+
+      try {
+
+        existingPeer.signal(offer);
+
+      } catch (e) {
+
+        console.error('Error applying offer to existing peer:', e);
+
+        existingPeer.destroy();
+
+        this.peers.delete(from);
+
+        this.answerAppliedForPeer.delete(from);
+
+        this.removeParticipant(from);
+
+      }
+
+      return;
+
+    }
+
  
 
-    const peer = new SimplePeer({
-
-      initiator: false,
-
-      trickle: false,
-
-      stream: this.localStream as MediaStream
-
-    });
+    const peer = new SimplePeer(this.getPeerConfig(false));
 
  
 
     peer.on('signal', (data: any) => {
 
-      this.signalR.invoke('SendVideoAnswer', this.roomCode, from, data);
+      this.sendSignal(from, data);
 
     });
 
@@ -446,9 +527,21 @@ export class VideoService {
 
  
 
-    peer.signal(offer);
-
     this.peers.set(from, peer);
+
+    try {
+
+      peer.signal(offer);
+
+    } catch (e) {
+
+      console.error('Error applying offer:', e);
+
+      this.peers.delete(from);
+
+      this.removeParticipant(from);
+
+    }
 
   }
 
@@ -456,11 +549,25 @@ export class VideoService {
 
   private handleVideoAnswer(from: string, answer: any) {
 
+    if (this.answerAppliedForPeer.has(from)) return;
+
     const peer = this.peers.get(from);
 
-    if (peer) {
+    if (!peer) return;
+
+    try {
 
       peer.signal(answer);
+
+      this.answerAppliedForPeer.add(from);
+
+    } catch (e) {
+
+      if ((e as Error)?.message?.includes('stable') === false) {
+
+        console.error('Error applying answer:', e);
+
+      }
 
     }
 
@@ -472,10 +579,15 @@ export class VideoService {
 
     const peer = this.peers.get(from);
 
-    if (peer) {
+    if (!peer) return;
+
+    try {
 
       peer.signal(candidate);
 
+    } catch {
+
+      // Ignore duplicate or stale candidate
     }
 
   }
@@ -557,6 +669,8 @@ export class VideoService {
       peer.destroy();
 
       this.peers.delete(participantId);
+
+      this.answerAppliedForPeer.delete(participantId);
 
     }
 
@@ -760,9 +874,23 @@ export class VideoService {
 
     } catch (error) {
 
+      const err = error as DOMException & { name?: string };
+
+      if (err?.name === 'NotAllowedError') {
+
+        throw new Error('Screen share was cancelled or permission was denied.');
+
+      }
+
+      if (err?.name === 'NotFoundError') {
+
+        throw new Error('No screen or window was selected.');
+
+      }
+
       console.error('Error toggling screen share:', error);
 
-      return false;
+      throw error;
 
     }
 
@@ -799,6 +927,8 @@ export class VideoService {
     });
 
     this.peers.clear();
+
+    this.answerAppliedForPeer.clear();
 
  
 

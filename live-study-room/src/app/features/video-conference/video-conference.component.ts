@@ -155,6 +155,10 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
     const code = this.route.snapshot.paramMap.get('code') || '';
     this.roomCode = this.normalizeRoomCode(code);
+    if (!this.roomCode) {
+      this.router.navigate(['/room']);
+      return;
+    }
 
     // Listen for room closed event
 
@@ -314,47 +318,25 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
   private updateVideoElements() {
 
+    const localParticipant = this.getLocalParticipant();
+
+    if (localParticipant && this.localVideoRef?.nativeElement) {
+
+      this.updateLocalVideo(localParticipant);
+
+    }
+
+ 
+
     if (!this.remoteVideosContainer?.nativeElement) return;
 
  
 
-    const currentIds = new Set(this.participants.map(p => p.id));
-
-   
-
-    // Remove stale video elements
-
-    this.videoElements.forEach((element, id) => {
-
-      if (!currentIds.has(id)) {
-
-        if (element.parentNode) {
-
-          element.parentNode.removeChild(element);
-
-        }
-
-        this.videoElements.delete(id);
-
-      }
-
-    });
-
- 
-
-    // Update existing and add new video elements
-
     this.participants.forEach(participant => {
 
-      if (participant.isLocal) {
+      if (participant.isLocal) return;
 
-        this.updateLocalVideo(participant);
-
-      } else {
-
-        this.updateRemoteVideo(participant);
-
-      }
+      this.updateRemoteVideo(participant);
 
     });
 
@@ -366,15 +348,15 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
     const videoElement = this.localVideoRef?.nativeElement;
 
-    if (videoElement && participant.stream) {
+    if (!videoElement || !participant.stream) return;
 
-      videoElement.srcObject = participant.stream;
+    if (videoElement.srcObject === participant.stream) return;
 
-      videoElement.muted = true;
+    videoElement.srcObject = participant.stream;
 
-      videoElement.play().catch(err => console.error('Play local video error:', err));
+    videoElement.muted = true;
 
-    }
+    videoElement.play().catch(() => {});
 
   }
 
@@ -382,43 +364,21 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
   private updateRemoteVideo(participant: VideoPeer) {
 
-    let videoElement = this.videoElements.get(participant.id);
+    const container = this.remoteVideosContainer?.nativeElement;
 
- 
+    if (!container || !participant.stream) return;
 
-    if (!videoElement) {
+    const videoElement = container.querySelector(`video[data-id="${participant.id}"]`) as HTMLVideoElement | null;
 
-      videoElement = document.createElement('video');
+    if (!videoElement) return;
 
-      videoElement.autoplay = true;
+    if (videoElement.srcObject === participant.stream) return;
 
-      videoElement.playsInline = true;
+    videoElement.srcObject = participant.stream;
 
-      videoElement.className = 'remote-video';
+    videoElement.muted = false;
 
- 
-
-      if (this.remoteVideosContainer?.nativeElement) {
-
-        this.remoteVideosContainer.nativeElement.appendChild(videoElement);
-
-      }
-
- 
-
-      this.videoElements.set(participant.id, videoElement);
-
-    }
-
- 
-
-    if (participant.stream) {
-
-      videoElement.srcObject = participant.stream;
-
-      videoElement.play().catch(err => console.error('Play remote video error:', err));
-
-    }
+    videoElement.play().catch(() => {});
 
   }
 
@@ -482,7 +442,9 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
     } catch (err) {
 
-      this.snackBar.open('Error toggling screen share: ' + String(err), 'Close', { duration: 4000 });
+      const message = err instanceof Error ? err.message : String(err);
+
+      this.snackBar.open(message, 'Close', { duration: 4000 });
 
     }
 

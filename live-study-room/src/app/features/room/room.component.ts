@@ -49,7 +49,7 @@ import { MatMenuModule } from '@angular/material/menu';
 
 import { MatDialogModule } from '@angular/material/dialog';
 
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, filter, skip } from 'rxjs/operators';
 
 import { ChatComponent } from '../chat/chat.component';
 import { environment } from '../../../environments/environment';
@@ -244,25 +244,33 @@ export class RoomComponent implements OnInit, OnDestroy {
 
     const token = this.auth.getToken();
 
- 
+    try {
 
-    await this.signalR.startConnection(environment.hubUrl, {
+      await this.signalR.startConnection(environment.hubUrl, {
 
-      accessTokenFactory: () => token || ''
+        accessTokenFactory: () => token || ''
 
-    });
+      });
 
- 
+      await this.signalR.invoke('JoinRoomGroup', code);
 
-    this.signalR.connectionState$.subscribe(connected => {
+    } catch (err) {
 
-      if (connected) {
+      console.error('JoinRoomGroup failed:', err);
 
-        this.signalR.invoke('JoinRoomGroup', code).catch(err => console.error('JoinRoomGroup failed:', err));
+      this.snackBar.open('Could not join room updates. Reconnecting...', 'Close', { duration: 3000 });
 
-      }
+    }
 
-    });
+    this.signalR.connectionState$.pipe(
+
+      takeUntil(this.destroy$),
+
+      filter(connected => connected),
+
+      skip(1)
+
+    ).subscribe(() => this.signalR.invoke('JoinRoomGroup', code).catch(() => {}));
 
  
 
@@ -283,6 +291,10 @@ export class RoomComponent implements OnInit, OnDestroy {
       this.router.navigate(['/room']);
 
     });
+
+    this.signalR.on('UserDisconnected', () => this.loadParticipants());
+
+    this.signalR.on('userdisconnected', () => this.loadParticipants());
 
   }
 
@@ -484,11 +496,17 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   startVideoCall() {
 
-    if (this.room) {
-
-      this.router.navigate(['/video', this.room.code]);
-
+    const code = (this.room?.code ?? this.route.snapshot.paramMap.get('code') ?? '').toString().trim();
+    if (!code) {
+      this.snackBar.open('Room not loaded. Please wait or refresh.', 'Close', { duration: 3000 });
+      return;
     }
+    const videoUrl = '/video/' + encodeURIComponent(code);
+    this.router.navigateByUrl(videoUrl).then(ok => {
+      if (!ok) {
+        this.snackBar.open('Could not open video call. Try again.', 'Close', { duration: 3000 });
+      }
+    });
 
   }
 
@@ -496,11 +514,12 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   joinVideoCall() {
 
-    if (this.room) {
-
-      this.router.navigate(['/video', this.room.code]);
-
+    const code = (this.room?.code ?? this.route.snapshot.paramMap.get('code') ?? '').toString().trim();
+    if (!code) {
+      this.snackBar.open('Room not loaded. Please wait or refresh.', 'Close', { duration: 3000 });
+      return;
     }
+    this.router.navigateByUrl('/video/' + encodeURIComponent(code));
 
   }
 

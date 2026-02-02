@@ -16,11 +16,12 @@ export class SignalRService {
 
   /**
    * Start a new SignalR connection with optional auth.
+   * Returns a Promise that resolves when connected, or rejects on failure.
    */
-  startConnection(hubUrl: string, options?: signalR.IHttpConnectionOptions): void {
+  startConnection(hubUrl: string, options?: signalR.IHttpConnectionOptions): Promise<void> {
     this.currentHubUrl = hubUrl;
     this.currentOptions = options;
-    
+
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, options ?? {})
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000]) // Exponential backoff
@@ -28,7 +29,7 @@ export class SignalRService {
       .build();
 
     this.setupConnectionHandlers();
-    this.connect();
+    return this.connect();
   }
 
   private setupConnectionHandlers() {
@@ -76,25 +77,31 @@ export class SignalRService {
   private async attemptReconnect() {
     this.reconnectAttempts++;
     console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-    
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ Max reconnection attempts reached');
+      return;
+    }
+
+    if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Disconnected) {
       return;
     }
 
     setTimeout(() => {
-      this.connect();
+      if (this.hubConnection?.state === signalR.HubConnectionState.Disconnected) {
+        this.connect();
+      }
     }, this.reconnectDelay * this.reconnectAttempts);
   }
 
   /**
    * Stop the current SignalR connection.
+   * Prevents automatic reconnect (e.g. when navigating away).
    */
   stopConnection(): void {
     if (this.hubConnection) {
+      this.reconnectAttempts = this.maxReconnectAttempts;
       this.hubConnection.stop();
       this.connectionState.next(false);
-      this.reconnectAttempts = 0;
     }
   }
 

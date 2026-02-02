@@ -5,7 +5,7 @@ import { PrimaryButtonComponent } from '../../shared/button/primary-button.compo
 import { DatePipe, CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { Subscription } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { filter, take } from 'rxjs/operators';
 
 interface ChatMessage {
   user: string;
@@ -45,12 +45,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   ngOnInit() {
     if (!this.roomCode) return;
 
-    const token = this.auth.getToken();
-    this.signalR.startConnection(environment.hubUrl, {
-      accessTokenFactory: () => token || '',
+    // Room component already starts SignalR and joins the group; wait for connection then join (idempotent).
+    this.signalR.connectionState$.pipe(
+      filter(connected => connected),
+      take(1)
+    ).subscribe(() => {
+      this.signalR.invoke('JoinRoomGroup', this.roomCode).catch(() => {});
     });
-
-    this.signalR.invoke('JoinRoomGroup', this.roomCode);
 
     this.signalR.on<ChatMessage>('ReceiveMessage', msg => {
       this.messages.push(msg);

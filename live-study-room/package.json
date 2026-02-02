@@ -1,6 +1,9 @@
 {
   "name": "live-study-room",
   "version": "0.0.0",
+  "browser": {
+    "simple-peer": "simple-peer/simplepeer.min.js"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

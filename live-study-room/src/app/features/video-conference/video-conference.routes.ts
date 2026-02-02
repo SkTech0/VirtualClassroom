@@ -3,6 +3,7 @@ import { VideoConferenceComponent } from './video-conference.component';
 import { authGuard } from '../../core/guards/auth.guard';
 
 export const videoConferenceRoutes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: '/room' },
   {
     path: ':code',
     component: VideoConferenceComponent,
