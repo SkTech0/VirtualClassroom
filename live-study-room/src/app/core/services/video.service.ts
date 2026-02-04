@@ -1,999 +1,290 @@
-// video.service.ts
-
 import { Injectable } from '@angular/core';
-
-import SimplePeer from 'simple-peer';
-
-import { BehaviorSubject } from 'rxjs';
-
-import { SignalRService } from './signalr.service';
-
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
+import {
+  Room,
+  RoomEvent,
+  RemoteTrack,
+  RemoteParticipant,
+  createLocalTracks,
+} from 'livekit-client';
 import { AuthService } from './auth.service';
-
+import { ApiService } from './api.service';
+import { API_ENDPOINTS } from '../constants/api-endpoints';
 import { environment } from '../../../environments/environment';
 
- 
-
 export interface VideoPeer {
-
   id: string;
-
   username: string;
-
   stream: MediaStream;
-
   isLocal: boolean;
-
 }
-
- 
 
 export interface VideoCallState {
-
   isVideoEnabled: boolean;
-
   isAudioEnabled: boolean;
-
   isInCall: boolean;
-
   isScreenSharing: boolean;
-
   participants: VideoPeer[];
-
 }
 
- 
-
 @Injectable({ providedIn: 'root' })
-
 export class VideoService {
-
+  private room: Room | null = null;
+  private roomCode = '';
   private localStream: MediaStream | null = null;
-
   private screenShareStream: MediaStream | null = null;
-
-  private peers: Map<string, SimplePeer.Instance> = new Map();
-
-  /** Peers we have already applied the remote answer to (avoid "wrong state: stable") */
-  private answerAppliedForPeer: Set<string> = new Set();
-
-  private roomCode: string = '';
-
-  private currentUserId: string = '';
-
- 
+  private remoteStreams = new Map<string, MediaStream>();
 
   private callStateSubject = new BehaviorSubject<VideoCallState>({
-
     isVideoEnabled: true,
-
     isAudioEnabled: true,
-
     isInCall: false,
-
     isScreenSharing: false,
-
-    participants: []
-
+    participants: [],
   });
-
- 
 
   public callState$ = this.callStateSubject.asObservable();
 
- 
-
   get callStateSnapshot(): VideoCallState {
-
     return this.callStateSubject.getValue();
-
   }
 
- 
-
-  constructor(private signalR: SignalRService, private auth: AuthService) {
-
-    // Get user ID from token or use a placeholder for now
-
-    this.currentUserId = this.getUserIdFromToken();
-
-    this.setupSignalRHandlers();
-
-  }
-
- 
-
-  private getUserIdFromToken(): string {
-
-    const token = this.auth.getToken();
-
-    if (token) {
-
-      try {
-
-        const payload = JSON.parse(atob(token.split('.')[1]));
-
-        return payload.sub || payload.nameid || 'unknown';
-
-      } catch (e) {
-
-        return 'unknown';
-
-      }
-
-    }
-
-    return 'unknown';
-
-  }
-
- 
-
-  private setupSignalRHandlers() {
-
-    const videoEvents = [
-
-      'UserJoinedVideo', 'ExistingVideoParticipants', 'UserLeftVideo',
-
-      'VideoOffer', 'VideoAnswer', 'VideoIceCandidate',
-
-      'VideoToggle', 'videoToggle', 'videotoggle',
-
-      'AudioToggle', 'audioToggle', 'audiotoggle',
-
-      'UserDisconnected', 'userdisconnected'
-
-    ];
-
-    videoEvents.forEach(ev => this.signalR.off(ev));
-
-    this.signalR.on('UserJoinedVideo', (data: any) => {
-
-      console.log('User joined video:', data);
-
-      let userId: string;
-
-      let username: string;
-
-     
-
-      if (data && typeof data === 'object' && data.userId && data.username) {
-
-        userId = data.userId;
-
-        username = data.username;
-
-      } else if (Array.isArray(data) && data.length >= 2) {
-
-        userId = data[0];
-
-        username = data[1];
-
-      } else {
-
-        userId = data;
-
-        username = 'Guest';
-
-      }
-
-     
-
-      if (userId !== this.currentUserId) {
-
-        this.handleUserJoined(userId, username, true);
-
-      }
-
-    });
-
- 
-
-    this.signalR.on('ExistingVideoParticipants', (participants: any[]) => {
-
-      participants.forEach(p => {
-
-        if (p.userId !== this.currentUserId) {
-
-          this.handleUserJoined(p.userId, p.username, false);
-
-        }
-
-      });
-
-    });
-
- 
-
-    this.signalR.on('UserLeftVideo', (userId: string) => {
-
-      console.log('User left video:', userId);
-
-      this.handleUserLeft(userId);
-
-    });
-
- 
-
-    this.signalR.on('VideoOffer', (data: any) => {
-
-      console.log('Received video offer from:', data.from);
-
-      this.handleVideoOffer(data.from, data.offer);
-
-    });
-
- 
-
-    this.signalR.on('VideoAnswer', (data: any) => {
-
-      console.log('Received video answer from:', data.from);
-
-      this.handleVideoAnswer(data.from, data.answer);
-
-    });
-
- 
-
-    this.signalR.on('VideoIceCandidate', (data: any) => {
-
-      console.log('Received ICE candidate from:', data.from);
-
-      this.handleIceCandidate(data.from, data.candidate);
-
-    });
-
- 
-
-    const onVideoToggle = (data: any) => this.handleVideoToggle(data?.userId, data?.isVideoEnabled);
-    this.signalR.on('VideoToggle', onVideoToggle);
-    this.signalR.on('videoToggle', onVideoToggle);
-    this.signalR.on('videotoggle', onVideoToggle);
-
-    const onAudioToggle = (data: any) => this.handleAudioToggle(data?.userId, data?.isAudioEnabled);
-    this.signalR.on('AudioToggle', onAudioToggle);
-    this.signalR.on('audioToggle', onAudioToggle);
-    this.signalR.on('audiotoggle', onAudioToggle);
-
-    const onUserDisconnected = (userId: string) => {
-      if (userId && userId !== this.currentUserId) this.handleUserLeft(userId);
-    };
-    this.signalR.on('UserDisconnected', onUserDisconnected);
-    this.signalR.on('userdisconnected', onUserDisconnected);
-
-  }
-
- 
+  constructor(private auth: AuthService, private api: ApiService) {}
 
   getLocalStream(): MediaStream | null {
-
     return this.localStream;
-
   }
-
- 
 
   getCallState(): VideoCallState {
-
     return this.callStateSubject.value;
-
   }
-
- 
 
   getPeers(): VideoPeer[] {
-
     return this.callStateSubject.value.participants;
-
   }
 
- 
+  private getUserId(): string {
+    const token = this.auth.getToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1])) as Record<string, string>;
+        return payload.sub ?? payload.nameid ?? 'unknown';
+      } catch {
+        // ignore
+      }
+    }
+    return 'unknown';
+  }
+
+  private getUsername(): string {
+    const user = this.auth.getUserFromStorage();
+    return user?.username ?? 'Guest';
+  }
+
+  private updateParticipantsFromState(): void {
+    const participants: VideoPeer[] = [];
+    if (this.localStream) {
+      participants.push({
+        id: 'local',
+        username: 'Me',
+        stream: this.localStream,
+        isLocal: true,
+      });
+    }
+    this.remoteStreams.forEach((stream, id) => {
+      const pub = this.room?.remoteParticipants.get(id);
+      participants.push({
+        id,
+        username: pub?.name ?? id,
+        stream,
+        isLocal: false,
+      });
+    });
+    this.callStateSubject.next({
+      ...this.callStateSubject.value,
+      participants,
+    });
+  }
 
   async initializeVideo(roomCode: string): Promise<boolean> {
-
-    try {
-
-      this.setupSignalRHandlers();
-
-      this.roomCode = (roomCode || '').trim().toUpperCase();
-
-      this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
-     
-
-      // Add local participant
-
-      this.addParticipant({
-
-        id: 'local',
-
-        username: 'Me',
-
-        stream: this.localStream,
-
-        isLocal: true
-
-      });
-
-     
-
-      // Update call state to show we're in a call
-
-      this.callStateSubject.next({
-
-        ...this.callStateSubject.value,
-
-        isInCall: true
-
-      });
-
- 
-
-      // Join video call via SignalR (use normalized room code)
-
-      await this.signalR.invoke('JoinVideoCall', this.roomCode);
-
-     
-
-      return true;
-
-    } catch (error) {
-
-      console.error('Error accessing media devices.', error);
-
+    const serverUrl = (environment as { livekitServerUrl?: string }).livekitServerUrl;
+    if (!serverUrl?.trim()) {
+      console.error('LiveKit server URL is not configured. Set livekitServerUrl in environment.');
       return false;
-
     }
 
-  }
-
- 
-
-  private getPeerConfig(initiator: boolean): SimplePeer.Options {
-
-    const iceServers = (environment as { iceServers?: RTCIceServer[] }).iceServers ?? [
-
-      { urls: 'stun:stun.l.google.com:19302' },
-
-    ];
-
-    return {
-
-      initiator,
-
-      trickle: true,
-
-      stream: this.localStream as MediaStream,
-
-      config: { iceServers },
-
-    };
-
-  }
-
- 
-
-  private sendSignal(targetUserId: string, data: any): void {
-
-    const t = data?.type;
-
-    if (t === 'offer') {
-
-      this.signalR.invoke('SendVideoOffer', this.roomCode, targetUserId, data);
-
-    } else if (t === 'answer') {
-
-      this.signalR.invoke('SendVideoAnswer', this.roomCode, targetUserId, data);
-
-    } else if (data?.candidate != null) {
-
-      this.signalR.invoke('SendVideoIceCandidate', this.roomCode, targetUserId, data);
-
-    }
-
-  }
-
- 
-
-  private async handleUserJoined(userId: string, username: string, initiator: boolean = true) {
-
-    if (this.peers.has(userId) || !this.localStream) return;
-
- 
-
-    const peer = new SimplePeer(this.getPeerConfig(initiator));
-
- 
-
-    peer.on('signal', (data: any) => {
-
-      this.sendSignal(userId, data);
-
-    });
-
- 
-
-    peer.on('stream', (stream: MediaStream) => {
-
-      this.addParticipant({
-
-        id: userId,
-
-        username: username,
-
-        stream: stream,
-
-        isLocal: false
-
-      });
-
-    });
-
- 
-
-    peer.on('error', (err: any) => {
-
-      console.error('Peer connection error:', err);
-
-      this.removeParticipant(userId);
-
-    });
-
- 
-
-    this.peers.set(userId, peer);
-
-  }
-
- 
-
-  private handleUserLeft(userId: string) {
-
-    this.removeParticipant(userId);
-
-  }
-
- 
-
-  private async handleVideoOffer(from: string, offer: any) {
-
-    if (!this.localStream) return;
-
-    // Ignore our own offer (should not happen if backend sends to target only)
-    if (from === this.currentUserId) return;
-
-    const existingPeer = this.peers.get(from);
-
-    if (existingPeer) {
-
-      try {
-
-        existingPeer.signal(offer);
-
-      } catch (e) {
-
-        console.error('Error applying offer to existing peer:', e);
-
-        existingPeer.destroy();
-
-        this.peers.delete(from);
-
-        this.answerAppliedForPeer.delete(from);
-
-        this.removeParticipant(from);
-
+    const code = (roomCode || '').trim().toUpperCase();
+    this.roomCode = code;
+
+    try {
+      const body = { roomCode: code, canPublish: true, canSubscribe: true };
+      const res = await firstValueFrom(
+        this.api.post<{ token: string; roomName: string }>(API_ENDPOINTS.video.livekitToken, body)
+      );
+      const token = res?.token;
+      if (!token) {
+        console.error('No LiveKit token received');
+        return false;
       }
 
-      return;
-
-    }
-
- 
-
-    const peer = new SimplePeer(this.getPeerConfig(false));
-
- 
-
-    peer.on('signal', (data: any) => {
-
-      this.sendSignal(from, data);
-
-    });
-
- 
-
-    peer.on('stream', (stream: MediaStream) => {
-
-      this.addParticipant({
-
-        id: from,
-
-        username: 'Guest',
-
-        stream: stream,
-
-        isLocal: false
-
+      const tracks = await createLocalTracks({ video: true, audio: true });
+      this.localStream = new MediaStream();
+      tracks.forEach((t) => {
+        if (t.mediaStreamTrack) this.localStream!.addTrack(t.mediaStreamTrack);
       });
-
-    });
-
- 
-
-    peer.on('error', (err: any) => {
-
-      console.error('Peer connection error:', err);
-
-      this.removeParticipant(from);
-
-    });
-
- 
-
-    this.peers.set(from, peer);
-
-    try {
-
-      peer.signal(offer);
-
-    } catch (e) {
-
-      console.error('Error applying offer:', e);
-
-      this.peers.delete(from);
-
-      this.removeParticipant(from);
-
-    }
-
-  }
-
- 
-
-  private handleVideoAnswer(from: string, answer: any) {
-
-    // Ignore our own answer (e.g. if backend ever broadcast to room)
-    if (from === this.currentUserId) return;
-
-    if (this.answerAppliedForPeer.has(from)) return;
-
-    const peer = this.peers.get(from);
-
-    if (!peer) return;
-
-    // Mark before applying to prevent concurrent duplicate delivery from causing "wrong state: stable"
-    this.answerAppliedForPeer.add(from);
-
-    try {
-
-      peer.signal(answer);
-
-    } catch (e) {
-
-      this.answerAppliedForPeer.delete(from);
-
-      if ((e as Error)?.message?.includes('stable') === false) {
-
-        console.error('Error applying answer:', e);
-
-      }
-
-    }
-
-  }
-
- 
-
-  private handleIceCandidate(from: string, candidate: any) {
-
-    if (from === this.currentUserId) return;
-
-    const peer = this.peers.get(from);
-
-    if (!peer) return;
-
-    try {
-
-      peer.signal(candidate);
-
-    } catch {
-
-      // Ignore duplicate or stale candidate
-    }
-
-  }
-
- 
-
-  private handleVideoToggle(userId: string, isVideoEnabled: boolean) {
-
-    const participant = this.callStateSubject.value.participants.find(p => p.id === userId);
-
-    if (participant && participant.stream) {
-
-      const videoTracks = participant.stream.getVideoTracks();
-
-      videoTracks.forEach(track => {
-
-        track.enabled = isVideoEnabled;
-
-      });
-
-    }
-
-  }
-
- 
-
-  private handleAudioToggle(userId: string, isAudioEnabled: boolean) {
-
-    const participant = this.callStateSubject.value.participants.find(p => p.id === userId);
-
-    if (participant && participant.stream) {
-
-      const audioTracks = participant.stream.getAudioTracks();
-
-      audioTracks.forEach(track => {
-
-        track.enabled = isAudioEnabled;
-
-      });
-
-    }
-
-  }
-
- 
-
-  private addParticipant(participant: VideoPeer) {
-
-    const currentState = this.callStateSubject.value;
-
-    const exists = currentState.participants.some(p => p.id === participant.id);
-
- 
-
-    if (!exists) {
 
       this.callStateSubject.next({
-
-        ...currentState,
-
+        ...this.callStateSubject.value,
         isInCall: true,
-
-        participants: [...currentState.participants, participant]
-
+        isVideoEnabled: true,
+        isAudioEnabled: true,
+        participants: [
+          { id: 'local', username: 'Me', stream: this.localStream, isLocal: true },
+        ],
       });
 
-    }
-
-  }
-
- 
-
-  private removeParticipant(participantId: string) {
-
-    const peer = this.peers.get(participantId);
-
-    if (peer) {
-
-      peer.destroy();
-
-      this.peers.delete(participantId);
-
-      this.answerAppliedForPeer.delete(participantId);
-
-    }
-
- 
-
-    const currentState = this.callStateSubject.value;
-
-    const updatedParticipants = currentState.participants.filter(p => p.id !== participantId);
-
-   
-
-    this.callStateSubject.next({
-
-      ...currentState,
-
-      participants: updatedParticipants
-
-    });
-
-  }
-
- 
-
-  toggleVideo(): boolean {
-
-    if (this.localStream) {
-
-      const videoTrack = this.localStream.getVideoTracks()[0];
-
-      if (videoTrack) {
-
-        videoTrack.enabled = !videoTrack.enabled;
-
-        const newState = {
-
-          ...this.callStateSubject.value,
-
-          isVideoEnabled: videoTrack.enabled
-
-        };
-
-        this.callStateSubject.next(newState);
-
-       
-
-        // Notify other participants
-
-        this.signalR.invoke('ToggleVideo', this.roomCode, videoTrack.enabled);
-
-       
-
-        return videoTrack.enabled;
-
-      }
-
-    }
-
-    return false;
-
-  }
-
- 
-
-  toggleAudio(): boolean {
-
-    if (this.localStream) {
-
-      const audioTrack = this.localStream.getAudioTracks()[0];
-
-      if (audioTrack) {
-
-        audioTrack.enabled = !audioTrack.enabled;
-
-        const newState = {
-
-          ...this.callStateSubject.value,
-
-          isAudioEnabled: audioTrack.enabled
-
-        };
-
-        this.callStateSubject.next(newState);
-
-       
-
-        // Notify other participants
-
-        this.signalR.invoke('ToggleAudio', this.roomCode, audioTrack.enabled);
-
-       
-
-        return audioTrack.enabled;
-
-      }
-
-    }
-
-    return false;
-
-  }
-
- 
-
-  async toggleScreenShare(): Promise<boolean> {
-
-    try {
-
-      const currentState = this.callStateSubject.value;
-
-      const isScreenSharing = !currentState.isScreenSharing;
-
- 
-
-      if (isScreenSharing) {
-
-        // Start screen sharing
-
-        this.screenShareStream = await navigator.mediaDevices.getDisplayMedia({
-
-          video: true,
-
-          audio: true
-
+      this.room = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+      });
+
+      this.room
+        .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
+          this.handleRemoteTrackSubscribed(participant.identity, participant.name ?? participant.identity, track);
+        })
+        .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
+          this.handleRemoteTrackUnsubscribed(participant.identity, track);
+        })
+        .on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+          this.removeRemoteParticipant(participant.identity);
         });
 
-       
-
-        // Replace video track in local stream
-
-        const videoTrack = this.screenShareStream.getVideoTracks()[0];
-
-        if (this.localStream) {
-
-          const oldVideoTrack = this.localStream.getVideoTracks()[0];
-
-          if (oldVideoTrack) {
-
-            this.localStream.removeTrack(oldVideoTrack);
-
-          }
-
-          this.localStream.addTrack(videoTrack);
-
-        }
-
-      } else {
-
-        // Stop screen sharing
-
-        if (this.screenShareStream) {
-
-          this.screenShareStream.getTracks().forEach(track => track.stop());
-
-          this.screenShareStream = null;
-
-         
-
-          // Restore camera video track
-
-          if (this.localStream) {
-
-            const oldVideoTrack = this.localStream.getVideoTracks()[0];
-
-            if (oldVideoTrack) {
-
-              this.localStream.removeTrack(oldVideoTrack);
-
-            }
-
-            // Re-add camera track if available
-
-            const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-
-            const cameraTrack = cameraStream.getVideoTracks()[0];
-
-            if (cameraTrack) {
-
-              this.localStream.addTrack(cameraTrack);
-
-            }
-
-          }
-
-        }
-
-      }
-
- 
-
-      this.callStateSubject.next({
-
-        ...currentState,
-
-        isScreenSharing
-
+      await this.room.connect(serverUrl, token, {
+        autoSubscribe: true,
       });
 
- 
+      const localParticipant = this.room.localParticipant;
+      for (const track of tracks) {
+        await localParticipant.publishTrack(track, { name: this.getUsername() });
+      }
 
-      return isScreenSharing;
-
+      return true;
     } catch (error) {
-
-      const err = error as DOMException & { name?: string };
-
-      if (err?.name === 'NotAllowedError') {
-
-        throw new Error('Screen share was cancelled or permission was denied.');
-
-      }
-
-      if (err?.name === 'NotFoundError') {
-
-        throw new Error('No screen or window was selected.');
-
-      }
-
-      console.error('Error toggling screen share:', error);
-
-      throw error;
-
+      console.error('Error initializing LiveKit video:', error);
+      this.cleanup();
+      return false;
     }
-
   }
 
- 
+  private handleRemoteTrackSubscribed(participantId: string, name: string, track: RemoteTrack): void {
+    let stream = this.remoteStreams.get(participantId);
+    if (!stream) {
+      stream = new MediaStream();
+      this.remoteStreams.set(participantId, stream);
+    }
+    if (track.mediaStreamTrack) stream.addTrack(track.mediaStreamTrack);
+    this.callStateSubject.next({
+      ...this.callStateSubject.value,
+      participants: this.buildParticipantsList(),
+    });
+  }
+
+  private handleRemoteTrackUnsubscribed(participantId: string, track: RemoteTrack): void {
+    const stream = this.remoteStreams.get(participantId);
+    if (stream && track.mediaStreamTrack) {
+      stream.removeTrack(track.mediaStreamTrack);
+      if (stream.getTracks().length === 0) this.remoteStreams.delete(participantId);
+    }
+    this.callStateSubject.next({
+      ...this.callStateSubject.value,
+      participants: this.buildParticipantsList(),
+    });
+  }
+
+  private removeRemoteParticipant(participantId: string): void {
+    const stream = this.remoteStreams.get(participantId);
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    this.remoteStreams.delete(participantId);
+    this.callStateSubject.next({
+      ...this.callStateSubject.value,
+      participants: this.buildParticipantsList(),
+    });
+  }
+
+  private buildParticipantsList(): VideoPeer[] {
+    const list: VideoPeer[] = [];
+    if (this.localStream) {
+      list.push({ id: 'local', username: 'Me', stream: this.localStream, isLocal: true });
+    }
+    this.remoteStreams.forEach((stream, id) => {
+      const pub = this.room?.remoteParticipants.get(id);
+      list.push({ id, username: pub?.name ?? id, stream, isLocal: false });
+    });
+    return list;
+  }
+
+  toggleVideo(): boolean {
+    if (!this.room?.localParticipant) return false;
+    const enabled = !this.callStateSnapshot.isVideoEnabled;
+    this.room.localParticipant.setCameraEnabled(enabled);
+    this.callStateSubject.next({ ...this.callStateSubject.value, isVideoEnabled: enabled });
+    return enabled;
+  }
+
+  toggleAudio(): boolean {
+    if (!this.room?.localParticipant) return false;
+    const enabled = !this.callStateSnapshot.isAudioEnabled;
+    this.room.localParticipant.setMicrophoneEnabled(enabled);
+    this.callStateSubject.next({ ...this.callStateSubject.value, isAudioEnabled: enabled });
+    return enabled;
+  }
+
+  async toggleScreenShare(): Promise<boolean> {
+    const current = this.callStateSnapshot.isScreenSharing;
+    try {
+      if (current) {
+        await this.room?.localParticipant.setScreenShareEnabled(false);
+        if (this.screenShareStream) {
+          this.screenShareStream.getTracks().forEach((t) => t.stop());
+          this.screenShareStream = null;
+        }
+        this.callStateSubject.next({ ...this.callStateSubject.value, isScreenSharing: false });
+        return false;
+      } else {
+        await this.room?.localParticipant.setScreenShareEnabled(true);
+        this.callStateSubject.next({ ...this.callStateSubject.value, isScreenSharing: true });
+        return true;
+      }
+    } catch (e) {
+      const err = e as DOMException & { name?: string };
+      if (err?.name === 'NotAllowedError') throw new Error('Screen share was cancelled or permission was denied.');
+      if (err?.name === 'NotFoundError') throw new Error('No screen or window was selected.');
+      throw e;
+    }
+  }
 
   async leaveCall(): Promise<void> {
-
-    // Notify backend
-
-    if (this.roomCode) {
-
-      try {
-
-        await this.signalR.invoke('LeaveVideoCall', this.roomCode);
-
-      } catch (error) {
-
-        console.error('Error leaving video call:', error);
-
-      }
-
-    }
-
- 
-
-    // Clean up peers
-
-    this.peers.forEach(peer => {
-
-      peer.destroy();
-
-    });
-
-    this.peers.clear();
-
-    this.answerAppliedForPeer.clear();
-
- 
-
-    // Stop all streams
-
-    if (this.localStream) {
-
-      this.localStream.getTracks().forEach(track => track.stop());
-
-    }
-
-    if (this.screenShareStream) {
-
-      this.screenShareStream.getTracks().forEach(track => track.stop());
-
-    }
-
- 
-
-    this.callStateSubject.value.participants.forEach(p => {
-
-      p.stream.getTracks().forEach(track => track.stop());
-
-    });
-
- 
-
-    // Reset state
-
-    this.callStateSubject.next({
-
-      isAudioEnabled: false,
-
-      isVideoEnabled: false,
-
-      isInCall: false,
-
-      isScreenSharing: false,
-
-      participants: []
-
-    });
-
- 
-
-    this.localStream = null;
-
-    this.screenShareStream = null;
-
-    this.roomCode = '';
-
+    this.cleanup();
   }
 
+  private cleanup(): void {
+    if (this.room) {
+      this.room.disconnect(true);
+      this.room = null;
+    }
+    this.remoteStreams.forEach((s) => s.getTracks().forEach((t) => t.stop()));
+    this.remoteStreams.clear();
+    if (this.localStream) this.localStream.getTracks().forEach((t) => t.stop());
+    if (this.screenShareStream) this.screenShareStream.getTracks().forEach((t) => t.stop());
+    this.localStream = null;
+    this.screenShareStream = null;
+    this.roomCode = '';
+    this.callStateSubject.next({
+      isVideoEnabled: false,
+      isAudioEnabled: false,
+      isInCall: false,
+      isScreenSharing: false,
+      participants: [],
+    });
+  }
 }
-
- 
-

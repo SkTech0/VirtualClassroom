@@ -1,11 +1,15 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import { catchError, throwError, switchMap } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 function isAuthEndpoint(url: string): boolean {
   return url.includes('/auth/login') || url.includes('/auth/register');
+}
+
+function isRefreshEndpoint(url: string): boolean {
+  return url.includes('/auth/refresh');
 }
 
 /**
@@ -36,12 +40,31 @@ export const unauthorizedInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err?.status === 401 && !isAuthEndpoint(err.url || '')) {
+      if (err?.status !== 401) return throwError(() => err);
+      const url = err?.url ?? req.url ?? '';
+      if (isAuthEndpoint(url)) return throwError(() => err);
+      if (isRefreshEndpoint(url)) {
         authService.logout();
         const returnUrl = apiUrlToAppReturnUrl(req.url);
         router.navigate(['/auth/login'], { queryParams: { returnUrl } });
+        return throwError(() => err);
       }
-      return throwError(() => err);
+      try {
+        return authService.refreshToken().pipe(
+          switchMap(() => next(req)),
+          catchError(() => {
+            authService.logout();
+            const returnUrl = apiUrlToAppReturnUrl(req.url);
+            router.navigate(['/auth/login'], { queryParams: { returnUrl } });
+            return throwError(() => err);
+          })
+        );
+      } catch {
+        authService.logout();
+        const returnUrl = apiUrlToAppReturnUrl(req.url);
+        router.navigate(['/auth/login'], { queryParams: { returnUrl } });
+        return throwError(() => err);
+      }
     })
   );
 };

@@ -8,6 +8,7 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:5275/api/v1',
   hubUrl: 'http://localhost:5275/hubs/room',
-  /** Optional: override for TURN (e.g. when STUN fails behind corporate NAT) */
+  /** LiveKit server URL for video (e.g. ws://localhost:7880 for local livekit-server) */
+  livekitServerUrl: 'ws://localhost:7880',
   iceServers: defaultIceServers,
 };

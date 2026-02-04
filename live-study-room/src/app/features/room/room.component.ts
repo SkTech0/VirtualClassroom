@@ -259,7 +259,10 @@ export class RoomComponent implements OnInit, OnDestroy {
 
       console.error('JoinRoomGroup failed:', err);
 
-      this.snackBar.open('Could not join room updates. Reconnecting...', 'Close', { duration: 3000 });
+      const msg = (err as Error)?.message?.includes('join the room first')
+        ? 'You must join this room from the room list first.'
+        : 'Could not join room updates. Reconnecting...';
+      this.snackBar.open(msg, 'Close', { duration: 4000 });
 
     }
 
@@ -271,7 +274,11 @@ export class RoomComponent implements OnInit, OnDestroy {
 
       skip(1)
 
-    ).subscribe(() => this.signalR.invoke('JoinRoomGroup', code).catch(() => {}));
+    ).subscribe(() => this.signalR.invoke('JoinRoomGroup', code).catch(err => {
+      if ((err as Error)?.message?.includes('join the room first')) {
+        this.snackBar.open('You must join this room from the room list first.', 'Close', { duration: 4000 });
+      }
+    }));
 
  
 

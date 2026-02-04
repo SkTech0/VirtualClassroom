@@ -1,24 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { VideoService } from './video.service';
-import { SignalRService } from './signalr.service';
 import { AuthService } from './auth.service';
+import { ApiService } from './api.service';
 
 describe('VideoService', () => {
   let service: VideoService;
-  let signalRSpy: jasmine.SpyObj<SignalRService>;
+  let apiSpy: jasmine.SpyObj<ApiService>;
   let authSpy: jasmine.SpyObj<AuthService>;
 
   beforeEach(() => {
-    signalRSpy = jasmine.createSpyObj('SignalRService', ['on', 'off', 'invoke', 'startConnection', 'isConnected'], {
-      connectionState$: { pipe: () => ({ subscribe: () => {} }) },
-    });
+    apiSpy = jasmine.createSpyObj('ApiService', ['post', 'get']);
     authSpy = jasmine.createSpyObj('AuthService', ['getToken', 'getUserFromStorage']);
     authSpy.getToken.and.returnValue(null);
+    authSpy.getUserFromStorage.and.returnValue({ username: 'Test', email: 'test@test.com' });
 
     TestBed.configureTestingModule({
       providers: [
         VideoService,
-        { provide: SignalRService, useValue: signalRSpy },
+        { provide: ApiService, useValue: apiSpy },
         { provide: AuthService, useValue: authSpy },
       ],
     });

@@ -6,10 +6,6 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- <link rel="icon" type="image/x-icon" href="favicon.ico"> -->
-  <!-- Polyfill for Node "util" (used by simple-peer/readable-stream in browser) -->
-  <script>
-    (function(g){g.util=g.util||{};g.util.debuglog=function(){return function(){};};g.util.inspect=function(x){if(x===null)return'null';if(x===undefined)return'undefined';try{return typeof x==='object'?JSON.stringify(x):String(x);}catch(e){return String(x);}};})(typeof globalThis!=='undefined'?globalThis:typeof window!=='undefined'?window:this);
-  </script>
 </head>
 <body>
   <app-root></app-root>

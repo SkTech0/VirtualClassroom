@@ -44,8 +44,6 @@ import { AuthService } from '../../core/services/auth.service';
 
 import { SignalRService } from '../../core/services/signalr.service';
 
-import { filter, take, timeout, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
 
 import { MatSidenavModule } from '@angular/material/sidenav';
 
@@ -258,7 +256,7 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     return (code || '').trim().toUpperCase();
   }
 
-  /** Called when user clicks "Join Video Call" on the pre-join screen */
+  /** Called when user clicks "Join Video Call" on the pre-join screen. Uses LiveKit (no SignalR for video). */
   async onJoinVideoCallClick(): Promise<void> {
     if (!this.roomCode || this.joining || this.isInCall) return;
     this.showPreJoin = false;
@@ -267,29 +265,12 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
 
     if (!this.signalR.isConnected()) {
       const token = this.auth.getToken();
-      this.signalR.startConnection(environment.hubUrl, {
-        accessTokenFactory: () => token || ''
-      });
+      this.signalR.startConnection(environment.hubUrl, { accessTokenFactory: () => token || '' });
     }
 
-    const connectionTimeoutMs = 15000;
-    this.signalR.connectionState$.pipe(
-      filter(connected => connected),
-      take(1),
-      timeout(connectionTimeoutMs),
-      catchError(() => {
-        this.joining = false;
-        this.showPreJoin = true;
-        this.cdr.detectChanges();
-        this.snackBar.open('Could not connect to video service. Please check your connection and try again.', 'Close', { duration: 5000 });
-        return of(false);
-      })
-    ).subscribe(async (connected) => {
-      if (connected === false) return;
-      await this.initializeVideo(this.roomCode);
-      this.joining = false;
-      this.cdr.detectChanges();
-    });
+    await this.initializeVideo(this.roomCode);
+    this.joining = false;
+    this.cdr.detectChanges();
   }
 
   /** Go back to room without joining */
@@ -301,11 +282,11 @@ export class VideoConferenceComponent implements OnInit, OnDestroy, AfterViewIni
     try {
       const success = await this.videoService.initializeVideo(roomCode);
       if (!success) {
-        this.snackBar.open(
-          'Camera/microphone denied. Fix: 1) Click the lock or camera icon left of the URL. 2) Set Camera and Microphone to Allow. 3) Refresh the page and click Join again.',
-          'Close',
-          { duration: 12000 }
-        );
+        const env = environment as { livekitServerUrl?: string };
+        const msg = !env.livekitServerUrl?.trim()
+          ? 'Video (LiveKit) is not configured. Set livekitServerUrl in environment (e.g. ws://localhost:7880).'
+          : 'Camera/microphone denied or LiveKit failed. Allow camera/mic and ensure LiveKit server is running.';
+        this.snackBar.open(msg, 'Close', { duration: 12000 });
         this.showPreJoin = true;
         this.joining = false;
         this.cdr.detectChanges();

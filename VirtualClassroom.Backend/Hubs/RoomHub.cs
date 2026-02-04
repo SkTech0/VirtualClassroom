@@ -7,163 +7,90 @@ namespace VirtualClassroom.Api.Hubs;
 [Authorize]
 public class RoomHub : Hub
 {
-    private readonly IVideoSessionRepository _videoSessionRepository;
-    private readonly IRoomCloser _roomCloser;
+    private readonly IRoomParticipantRepository _participantRepository;
 
-    public RoomHub(
-        IVideoSessionRepository videoSessionRepository,
-        IRoomCloser roomCloser)
+    public RoomHub(IRoomParticipantRepository participantRepository)
     {
-        _videoSessionRepository = videoSessionRepository;
-        _roomCloser = roomCloser;
+        _participantRepository = participantRepository;
+    }
+
+    /// <summary>
+    /// Ensures the current user is an active participant of the room. Throws HubException if not.
+    /// </summary>
+    private async Task EnsureUserIsRoomMemberAsync(string normalizedRoomCode, CancellationToken ct = default)
+    {
+        var userId = Context.UserIdentifier;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
+            throw new HubException("Invalid user context.");
+
+        var participants = await _participantRepository.GetActiveParticipantsAsync(normalizedRoomCode, ct);
+        var isMember = participants.Any(p => p.UserId == userGuid);
+        if (!isMember)
+            throw new HubException("You must join the room first before accessing it.");
     }
 
     public async Task StartTimer(string roomCode, int durationSeconds)
     {
-        await Clients.Group(roomCode).SendAsync("TimerStarted", durationSeconds);
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("TimerStarted", durationSeconds);
     }
 
     public async Task PauseTimer(string roomCode)
     {
-        await Clients.Group(roomCode).SendAsync("TimerPaused");
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("TimerPaused");
     }
 
     public async Task ResumeTimer(string roomCode)
     {
-        await Clients.Group(roomCode).SendAsync("TimerResumed");
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("TimerResumed");
     }
 
     public async Task ResetTimer(string roomCode)
     {
-        await Clients.Group(roomCode).SendAsync("TimerReset");
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("TimerReset");
     }
 
     public async Task UpdateStatus(string roomCode, string userId, string status)
     {
-        await Clients.Group(roomCode).SendAsync("UserStatusUpdated", userId, status);
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("UserStatusUpdated", userId, status);
     }
 
     public async Task SendKnockKnock(string roomCode, string targetUserId, string fromUserId)
     {
-        await Clients.Group(roomCode).SendAsync("KnockKnockReceived", targetUserId, fromUserId);
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("KnockKnockReceived", targetUserId, fromUserId);
     }
 
     public async Task SendReminder(string roomCode, string message)
     {
-        await Clients.Group(roomCode).SendAsync("ReminderReceived", message);
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("ReminderReceived", message);
     }
 
     public async Task SendMessage(string roomCode, string user, string message)
     {
+        var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
         var timestamp = DateTime.UtcNow.ToString("o");
-        await Clients.Group(roomCode).SendAsync("ReceiveMessage", new { user, message, timestamp });
+        await Clients.Group(code).SendAsync("ReceiveMessage", new { user, message, timestamp });
     }
 
     public async Task NotifyParticipantChange(string roomCode)
     {
-        await Clients.Group(roomCode).SendAsync("ParticipantsChanged");
-    }
-
-    public async Task JoinVideoCall(string roomCode)
-    {
         var code = NormalizeRoomCode(roomCode);
-        await Groups.AddToGroupAsync(Context.ConnectionId, code);
-
-        var userId = Context.UserIdentifier;
-        var username = Context.User?.Identity?.Name ?? "Unknown User";
-
-        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-        {
-            var session = new Domain.Entities.VideoSession
-            {
-                RoomCode = code,
-                UserId = userGuid,
-                Username = username,
-                ConnectionId = Context.ConnectionId!
-            };
-            await _videoSessionRepository.JoinAsync(session);
-        }
-
-        var videoSessions = await _videoSessionRepository.GetActiveByRoomAsync(code);
-        var videoParticipants = videoSessions.Select(v => new
-        {
-            userId = v.UserId.ToString(),
-            v.Username,
-            v.IsVideoEnabled,
-            v.IsAudioEnabled
-        }).ToList();
-
-        await Clients.Caller.SendAsync("ExistingVideoParticipants", videoParticipants);
-        await Clients.Group(code).SendAsync("UserJoinedVideo", userId, username);
-    }
-
-    public async Task LeaveVideoCall(string roomCode)
-    {
-        var code = NormalizeRoomCode(roomCode);
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, code);
-
-        var userId = Context.UserIdentifier;
-        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-        {
-            await _videoSessionRepository.LeaveAsync(code, userGuid);
-        }
-
-        await Clients.Group(code).SendAsync("UserLeftVideo", userId);
-
-        // Do NOT close the whole room when the last person leaves the video call.
-        // The room (chat, Pomodoro, etc.) stays open; only the video call ends.
-    }
-
-    private async Task<int> GetVideoActiveCount(string roomCode)
-    {
-        var sessions = await _videoSessionRepository.GetActiveByRoomAsync(roomCode);
-        return sessions.Count;
-    }
-
-    public async Task SendVideoOffer(string roomCode, string targetUserId, object offer)
-    {
-        var code = NormalizeRoomCode(roomCode);
-        var fromUserId = Context.UserIdentifier;
-        // Send only to the target peer so the sender doesn't receive their own offer
-        await Clients.User(targetUserId).SendAsync("VideoOffer", new { from = fromUserId, to = targetUserId, offer });
-    }
-
-    public async Task SendVideoAnswer(string roomCode, string targetUserId, object answer)
-    {
-        var code = NormalizeRoomCode(roomCode);
-        var fromUserId = Context.UserIdentifier;
-        // Send only to the target peer; otherwise the answerer receives their own answer and hits "wrong state: stable"
-        await Clients.User(targetUserId).SendAsync("VideoAnswer", new { from = fromUserId, to = targetUserId, answer });
-    }
-
-    public async Task SendVideoIceCandidate(string roomCode, string targetUserId, object candidate)
-    {
-        var code = NormalizeRoomCode(roomCode);
-        var fromUserId = Context.UserIdentifier;
-        // Send only to the target peer
-        await Clients.User(targetUserId).SendAsync("VideoIceCandidate", new { from = fromUserId, to = targetUserId, candidate });
-    }
-
-    public async Task ToggleVideo(string roomCode, bool isVideoEnabled)
-    {
-        var code = NormalizeRoomCode(roomCode);
-        var userId = Context.UserIdentifier;
-        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-        {
-            await _videoSessionRepository.UpdateStateAsync(code, userGuid, isVideoEnabled, true);
-        }
-        await Clients.Group(code).SendAsync("VideoToggle", new { userId, isVideoEnabled });
-    }
-
-    public async Task ToggleAudio(string roomCode, bool isAudioEnabled)
-    {
-        var code = NormalizeRoomCode(roomCode);
-        var userId = Context.UserIdentifier;
-        if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
-        {
-            await _videoSessionRepository.UpdateStateAsync(code, userGuid, true, isAudioEnabled);
-        }
-        await Clients.Group(code).SendAsync("AudioToggle", new { userId, isAudioEnabled });
+        await EnsureUserIsRoomMemberAsync(code);
+        await Clients.Group(code).SendAsync("ParticipantsChanged");
     }
 
     private static string NormalizeRoomCode(string? code) =>
@@ -187,12 +114,14 @@ public class RoomHub : Hub
     public async Task JoinRoomGroup(string roomCode)
     {
         var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
         await Groups.AddToGroupAsync(Context.ConnectionId, code);
     }
 
     public async Task LeaveRoomGroup(string roomCode)
     {
         var code = NormalizeRoomCode(roomCode);
+        await EnsureUserIsRoomMemberAsync(code);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, code);
     }
 }

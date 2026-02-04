@@ -140,6 +140,10 @@ Base path: `/api/v1`. SignalR hub: `/hubs/room`.
 | Pomodoro   | GET    | `pomodoro/session/{sessionId}` |
 | Video      | POST   | `video/livekit-token` |
 
+**SignalR:** The hub enforces room membership: only users who have joined the room via `rooms/join` can call `JoinRoomGroup`, send chat messages, or use timer/room events. Video is handled by **LiveKit** (see below).
+
+**Video (LiveKit):** The app uses LiveKit for video calls. The frontend requests a token from `video/livekit-token` and connects to your LiveKit server. Set `livekitServerUrl` in the frontend environment (e.g. `ws://localhost:7880` for local [livekit-server](https://docs.livekit.io/home/get-started/)). For production, set the LiveKit URL via build/deploy config.
+
 ---
 
 ## Deploy to production
@@ -170,7 +174,8 @@ Base path: `/api/v1`. SignalR hub: `/hubs/room`.
 2. Build: use `live-study-room/Dockerfile`
 3. **Build variables:**  
    `API_URL` = `https://YOUR-BACKEND.up.railway.app/api/v1`  
-   `HUB_URL` = `https://YOUR-BACKEND.up.railway.app/hubs/room`
+   `HUB_URL` = `https://YOUR-BACKEND.up.railway.app/hubs/room`  
+   `LIVEKIT_SERVER_URL` = your LiveKit server URL (e.g. `wss://your-livekit.livekit.cloud`)
 4. Deploy
 
 **After deploy:** Open frontend URL; backend health: `https://YOUR-BACKEND.up.railway.app/health`. If auth returns 500/503, check DB and that migrations ran (e.g. run `dotnet ef database update` once with production connection string).

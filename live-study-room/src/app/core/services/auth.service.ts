@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface AuthResponse {
@@ -33,12 +33,20 @@ export class AuthService {
     );
   }
 
+  /** Shared refresh in progress so concurrent 401s trigger only one refresh call. */
+  private refreshInProgress: Observable<AuthResponse> | null = null;
+
   refreshToken(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) throw new Error('No refresh token');
-    return this.http.post<AuthResponse>(`${this.BASE_URL}/refresh`, { refreshToken }).pipe(
-      tap(res => this.setSession(res))
-    );
+    if (!this.refreshInProgress) {
+      this.refreshInProgress = this.http.post<AuthResponse>(`${this.BASE_URL}/refresh`, { refreshToken }).pipe(
+        tap(res => this.setSession(res)),
+        tap({ next: () => { this.refreshInProgress = null; }, error: () => { this.refreshInProgress = null; } }),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+    }
+    return this.refreshInProgress;
   }
 
   logout() {
