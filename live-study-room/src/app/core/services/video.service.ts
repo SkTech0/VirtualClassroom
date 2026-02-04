@@ -5,6 +5,8 @@ import {
   RoomEvent,
   RemoteTrack,
   RemoteParticipant,
+  TrackPublication,
+  LocalTrack,
   createLocalTracks,
 } from 'livekit-client';
 import { AuthService } from './auth.service';
@@ -68,7 +70,7 @@ export class VideoService {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1])) as Record<string, string>;
-        return payload.sub ?? payload.nameid ?? 'unknown';
+        return payload['sub'] ?? payload['nameid'] ?? 'unknown';
       } catch {
         // ignore
       }
@@ -129,7 +131,7 @@ export class VideoService {
 
       const tracks = await createLocalTracks({ video: true, audio: true });
       this.localStream = new MediaStream();
-      tracks.forEach((t) => {
+      tracks.forEach((t: LocalTrack) => {
         if (t.mediaStreamTrack) this.localStream!.addTrack(t.mediaStreamTrack);
       });
 
@@ -149,10 +151,10 @@ export class VideoService {
       });
 
       this.room
-        .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
+        .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: TrackPublication, participant: RemoteParticipant) => {
           this.handleRemoteTrackSubscribed(participant.identity, participant.name ?? participant.identity, track);
         })
-        .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication, participant: RemoteParticipant) => {
+        .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, publication: TrackPublication, participant: RemoteParticipant) => {
           this.handleRemoteTrackUnsubscribed(participant.identity, track);
         })
         .on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {

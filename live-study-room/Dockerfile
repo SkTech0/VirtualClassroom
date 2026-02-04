@@ -1,11 +1,13 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Build-time API URL (Railway: set API_URL and HUB_URL to your backend URL)
+# Build-time API URL and LiveKit (Railway: set API_URL, HUB_URL, LIVEKIT_SERVER_URL)
 ARG API_URL=/api/v1
 ARG HUB_URL=/hubs/room
+ARG LIVEKIT_SERVER_URL=
 ENV API_URL=$API_URL
 ENV HUB_URL=$HUB_URL
+ENV LIVEKIT_SERVER_URL=$LIVEKIT_SERVER_URL
 
 COPY package*.json ./
 RUN npm ci
